@@ -1,3 +1,4 @@
+import { roundNameForMatchCount } from '../utils/roundNaming';
 import type { Match, Tournament } from '../api/types';
 
 interface BracketViewProps {
@@ -83,9 +84,11 @@ export function BracketView({ tournament, teamName, teamLogo }: BracketViewProps
   const boxes: { key: string; x: number; y: number; match: Match | undefined; isChampionSlot: boolean }[] = [];
   const hLines: { key: string; x: number; y: number; width: number }[] = [];
   const vLines: { key: string; x: number; y: number; height: number }[] = [];
+  const columnMatchCounts: number[] = [];
 
   for (let col = 0; col < totalRounds; col++) {
     const n = round0Count / 2 ** col;
+    columnMatchCounts.push(n);
     const spacing = totalHeight / n;
     const round = tournament.rounds[col];
     const x = col * (COL_WIDTH + COL_GAP);
@@ -129,7 +132,7 @@ export function BracketView({ tournament, teamName, teamLogo }: BracketViewProps
                 className="bracket-col-label"
                 style={{ left: col * (COL_WIDTH + COL_GAP), width: COL_WIDTH }}
               >
-                {round ? round.name : `Ronda ${col + 1}`}
+                {round ? round.name : roundNameForMatchCount(columnMatchCounts[col])}
               </div>
             );
           })}

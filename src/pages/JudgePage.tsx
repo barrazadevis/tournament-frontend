@@ -3,17 +3,19 @@ import { useParams } from 'react-router-dom';
 import { apiGet, apiPost } from '../api/client';
 import { connectNamespace } from '../api/socket';
 import { useTeams } from '../hooks/useTeams';
-import { formatSeconds } from '../utils/format';
+import { formatSeconds, formatTime } from '../utils/format';
 import { BracketView } from '../components/BracketView';
 import { StartTournamentPanel } from '../components/StartTournamentPanel';
+import { ChampionCelebration } from '../components/ChampionCelebration';
 import { statusBadge } from '../utils/tournamentStatus';
+import { roundNameForMatchCount } from '../utils/roundNaming';
 import { useModal } from '../components/ModalProvider';
 import type { Tournament, QualifyingRound, TimerTickEvent, TournamentFinishedEvent } from '../api/types';
 
 export function JudgePage() {
   const { tournamentId = '' } = useParams();
   const { teamName, teamLogo } = useTeams();
-  const { promptModal } = useModal();
+  const { confirmModal } = useModal();
   const [tournament, setTournament] = useState<Tournament | null>(null);
   const [qualifying, setQualifying] = useState<QualifyingRound | null>(null);
   const [remainingByMatch, setRemainingByMatch] = useState<Record<string, number>>({});
@@ -70,20 +72,23 @@ export function JudgePage() {
   const startMatch = (matchId: string) =>
     socketRef.current?.emit('start_match', { matchId, timerDurationSeconds: timerDurationMinutes * 60 });
 
-  const judgeMatch = (matchId: string, approve: boolean) =>
-    socketRef.current?.emit('judge_verdict', { matchId, approve });
+  const judgeMatch = (matchId: string, teamId: string, approve: boolean) =>
+    socketRef.current?.emit('judge_verdict', { matchId, teamId, approve });
 
-  const advanceRound = async (currentRoundOrder: number, isFinalMatch: boolean) => {
-    let nextRoundName = '';
-    if (!isFinalMatch) {
-      const input = await promptModal('Nombre de la siguiente ronda:', { placeholder: 'ej. "Semifinal"' });
-      if (!input) return;
-      nextRoundName = input;
-    }
+  const restartMatch = async (matchId: string) => {
+    const confirmed = await confirmModal(
+      'Nadie envió solución y el tiempo se agotó. ¿Repetir este match desde cero (mismo caso, timer nuevo)?',
+      { confirmLabel: 'Repetir' },
+    );
+    if (!confirmed) return;
+    socketRef.current?.emit('restart_match', { matchId });
+  };
+
+  const advanceRound = (currentRoundOrder: number, roundName: string) => {
     socketRef.current?.emit('advance_round', {
       tournamentId,
       currentRoundOrder,
-      nextRoundName,
+      nextRoundName: roundName,
       timerDurationSeconds: timerDurationMinutes * 60,
     });
   };
@@ -111,10 +116,10 @@ export function JudgePage() {
     const champion = championId ?? finalRound?.matches[0]?.winnerId ?? null;
     return (
       <div className="judge-page">
-        <div className="champion-screen">
-          <div>🏆 Torneo finalizado</div>
-          <div className="champion-name">{champion ? teamName(champion) : '—'}</div>
-        </div>
+        <ChampionCelebration
+          championName={champion ? teamName(champion) : '—'}
+          championLogo={champion ? teamLogo(champion) : undefined}
+        />
       </div>
     );
   }
@@ -170,6 +175,7 @@ export function JudgePage() {
             onStart={startMatch}
             onJudge={judgeMatch}
             onAdvance={advanceRound}
+            onRestart={restartMatch}
           />
         </>
       )}
@@ -234,12 +240,23 @@ interface BracketPanelProps {
   teamLogo: (id: string) => string | undefined;
   remainingFor: (matchId: string, timerStartedAt: string | null, duration: number) => number;
   onStart: (matchId: string) => void;
-  onJudge: (matchId: string, approve: boolean) => void;
-  onAdvance: (currentRoundOrder: number, isFinalMatch: boolean) => void;
+  onJudge: (matchId: string, teamId: string, approve: boolean) => void;
+  onAdvance: (currentRoundOrder: number, roundName: string) => void;
+  onRestart: (matchId: string) => void;
 }
 
-function BracketPanel({ round, teamName, teamLogo, remainingFor, onStart, onJudge, onAdvance }: BracketPanelProps) {
+function BracketPanel({
+  round,
+  teamName,
+  teamLogo,
+  remainingFor,
+  onStart,
+  onJudge,
+  onAdvance,
+  onRestart,
+}: BracketPanelProps) {
   const isFinalMatch = round.matches.length === 1;
+  const upcomingRoundName = roundNameForMatchCount(round.matches.length / 2);
   return (
     <div>
       <div className="round-header">
@@ -247,14 +264,18 @@ function BracketPanel({ round, teamName, teamLogo, remainingFor, onStart, onJudg
         <button
           className="advance-btn"
           disabled={!round.isComplete}
-          onClick={() => onAdvance(round.order, isFinalMatch)}
+          onClick={() => onAdvance(round.order, upcomingRoundName)}
         >
-          {isFinalMatch ? 'Finalizar torneo 🏆' : 'Avanzar de ronda'}
+          {isFinalMatch ? 'Finalizar torneo' : `Avanzar a ${upcomingRoundName}`}
         </button>
       </div>
 
       {round.matches.map((match) => {
-        const pendingSubmission = match.submissions.find((s) => s.verdict === 'PENDING');
+        const pendingSubmissions = match.submissions
+          .filter((s) => s.verdict === 'PENDING')
+          .sort((a, b) => new Date(a.submittedAt).getTime() - new Date(b.submittedAt).getTime());
+        const canRestart =
+          match.status === 'RESOLVED' && match.resolution === 'NO_WINNER' && match.submissions.length === 0;
         return (
           <div key={match.id} className={`match-row card${match.status === 'ACTIVE' ? ' match-row--active' : ''}`}>
             <div className="match-row-top">
@@ -270,10 +291,9 @@ function BracketPanel({ round, teamName, teamLogo, remainingFor, onStart, onJudg
                   <button className="btn-start" onClick={() => onStart(match.id)}>Iniciar match</button>
                 )}
                 {match.status === 'AWAITING_JUDGMENT' && (
-                  <>
-                    <button className="btn-approve" onClick={() => onJudge(match.id, true)}>Aprobar</button>
-                    <button className="btn-reject" onClick={() => onJudge(match.id, false)}>Rechazar</button>
-                  </>
+                  <span className="badge badge--pending">
+                    {pendingSubmissions.length} por juzgar
+                  </span>
                 )}
                 {match.status === 'RESOLVED' &&
                   (match.winnerId ? (
@@ -286,15 +306,35 @@ function BracketPanel({ round, teamName, teamLogo, remainingFor, onStart, onJudg
                     {formatSeconds(remainingFor(match.id, match.timerStartedAt, match.timerDurationSeconds))}
                   </span>
                 )}
+                {canRestart && (
+                  <button className="btn-start" onClick={() => onRestart(match.id)}>
+                    Repetir match
+                  </button>
+                )}
               </div>
             </div>
-            {match.status === 'AWAITING_JUDGMENT' && pendingSubmission && (
-              <div className="submission-preview">
-                <strong>{teamName(pendingSubmission.teamId)}:</strong>
-                <br />
-                {pendingSubmission.content}
+            {pendingSubmissions.map((submission, index) => (
+              <div key={submission.teamId} className="submission-preview">
+                <div className="match-row-top">
+                  <div>
+                    <strong>{teamName(submission.teamId)}</strong>{' '}
+                    <span className="hint" style={{ display: 'inline' }}>
+                      envió a las {formatTime(submission.submittedAt)}
+                      {index === 0 && pendingSubmissions.length > 1 ? ' — primero' : ''}
+                    </span>
+                  </div>
+                  <div className="actions">
+                    <button className="btn-approve" onClick={() => onJudge(match.id, submission.teamId, true)}>
+                      Aprobar
+                    </button>
+                    <button className="btn-reject" onClick={() => onJudge(match.id, submission.teamId, false)}>
+                      Rechazar
+                    </button>
+                  </div>
+                </div>
+                {submission.content}
               </div>
-            )}
+            ))}
           </div>
         );
       })}

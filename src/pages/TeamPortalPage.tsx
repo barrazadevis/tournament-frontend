@@ -17,6 +17,7 @@ export function TeamPortalPage() {
   const navigate = useNavigate();
   const { alertModal } = useModal();
   const [stored, setStored] = useState<StoredTeam | null>(null);
+  const [tournamentStatus, setTournamentStatus] = useState<Tournament['status'] | null>(null);
   const [mode, setMode] = useState<'new' | 'rejoin'>('new');
   const [teamNameInput, setTeamNameInput] = useState('');
   const [members, setMembers] = useState(['']);
@@ -31,6 +32,20 @@ export function TeamPortalPage() {
   useEffect(() => {
     const raw = localStorage.getItem(teamStorageKey(tournamentId));
     if (raw) setStored(JSON.parse(raw));
+  }, [tournamentId]);
+
+  useEffect(() => {
+    let cancelled = false;
+    apiGet<Tournament>(`/tournaments/${tournamentId}`)
+      .then((data) => {
+        if (cancelled) return;
+        setTournamentStatus(data.status);
+        if (data.status !== 'DRAFT') setMode('rejoin');
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
   }, [tournamentId]);
 
   useEffect(() => {
@@ -108,6 +123,10 @@ export function TeamPortalPage() {
   };
 
   const handleRegister = async () => {
+    if (tournamentStatus && tournamentStatus !== 'DRAFT') {
+      await alertModal('Este torneo ya inició. No se pueden registrar equipos nuevos.');
+      return;
+    }
     const name = teamNameInput.trim();
     const memberNames = members.map((m) => m.trim()).filter(Boolean);
     if (!name) {
@@ -193,7 +212,15 @@ export function TeamPortalPage() {
             </button>
           </div>
 
-          {mode === 'new' ? (
+          {mode === 'new' && tournamentStatus && tournamentStatus !== 'DRAFT' ? (
+            <>
+              <h2>Registra a tu equipo</h2>
+              <div className="status-banner rejected">
+                Este torneo ya inició — no se pueden registrar equipos nuevos. Si ya se habían
+                registrado antes, usa la pestaña "Ya me registré".
+              </div>
+            </>
+          ) : mode === 'new' ? (
             <>
               <h2>Registra a tu equipo</h2>
               <label>Nombre del equipo</label>

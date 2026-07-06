@@ -603,8 +603,58 @@ input {
 }
 
 .champion-screen {
+  position: relative;
   text-align: center;
-  margin-top: 15vh;
+  margin-top: 12vh;
+  overflow: hidden;
+  min-height: 50vh;
+}
+
+.confetti-layer {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.confetti-piece {
+  position: absolute;
+  top: -20px;
+  border-radius: 2px;
+  animation-name: confetti-fall;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+}
+
+@keyframes confetti-fall {
+  0% {
+    transform: translateY(0) rotate(0deg);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(110vh) rotate(720deg);
+    opacity: 0.8;
+  }
+}
+
+.champion-trophy {
+  font-size: 5rem;
+  line-height: 1;
+  animation: trophy-bounce-in 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+@keyframes trophy-bounce-in {
+  0% {
+    transform: scale(0) rotate(-15deg);
+    opacity: 0;
+  }
+  60% {
+    transform: scale(1.15) rotate(5deg);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1) rotate(0deg);
+  }
 }
 
 .champion-label {
@@ -612,12 +662,35 @@ input {
   text-transform: uppercase;
   letter-spacing: 0.1em;
   font-size: 1rem;
+  margin-top: 1rem;
+  opacity: 0;
+  animation: champion-fade-in 0.6s ease-out 0.5s forwards;
+}
+
+@keyframes champion-fade-in {
+  to {
+    opacity: 1;
+  }
 }
 
 .champion-name {
   font-size: clamp(2.5rem, 6vw, 5rem);
   color: var(--gold-text);
   margin-top: 1rem;
+  opacity: 0;
+  animation: champion-name-reveal 0.7s cubic-bezier(0.34, 1.56, 0.64, 1) 0.9s forwards;
+}
+
+@keyframes champion-name-reveal {
+  0% {
+    opacity: 0;
+    transform: scale(0.6);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+    text-shadow: 0 0 24px rgba(var(--gold-rgb), 0.5);
+  }
 }
 
 /* ===== Judge ===== */

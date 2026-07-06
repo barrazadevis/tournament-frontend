@@ -87,12 +87,13 @@ export function TeamMatchPage() {
     banner =
       ownSubmission.verdict === 'PENDING'
         ? { kind: 'waiting', message: 'Tu solución fue enviada. Esperando el veredicto del profesor…' }
-        : { kind: 'rejected', message: 'Tu solución fue rechazada. Tu rival tiene ahora la oportunidad de corregir.' };
+        : { kind: 'rejected', message: 'Tu solución fue rechazada. Ya no puedes reintentar en este match.' };
   } else if (match.status === 'PENDING') {
     banner = { kind: 'waiting', message: 'El profesor todavía no ha iniciado este match.' };
-  } else if (match.status === 'AWAITING_JUDGMENT') {
-    banner = { kind: 'waiting', message: 'Tu rival ya envió su solución. Esperando el veredicto del profesor…' };
   }
+  // Nota: si el match está AWAITING_JUDGMENT porque el RIVAL ya envió la
+  // suya, este equipo puede seguir enviando la propia sin esperar — por
+  // eso no hay un banner que bloquee aquí solo por ese estado.
 
   return (
     <div className="team-screen">

@@ -5,6 +5,8 @@ import { connectNamespace } from '../api/socket';
 import { useTeams } from '../hooks/useTeams';
 import { CountdownRing } from '../components/CountdownRing';
 import { BracketView } from '../components/BracketView';
+import { ChampionCelebration } from '../components/ChampionCelebration';
+import { matchStatusBadge } from '../utils/matchStatus';
 import type { Tournament, TimerTickEvent, TournamentFinishedEvent } from '../api/types';
 
 type ParticipantStatus = 'compite' | 'avanza' | 'eliminado' | 'campeon';
@@ -91,13 +93,10 @@ export function ViewerPage() {
     const finalRound = tournament.rounds[tournament.rounds.length - 1];
     const champion = championId ?? finalRound?.matches[0]?.winnerId ?? null;
     return (
-      <div className="champion-screen">
-        <div className="champion-label">Campeón del torneo</div>
-        <div className="champion-name">
-          {champion && teamLogo(champion) && <span className="team-logo-icon">{teamLogo(champion)}</span>}
-          {champion ? teamName(champion) : '—'}
-        </div>
-      </div>
+      <ChampionCelebration
+        championName={champion ? teamName(champion) : '—'}
+        championLogo={champion ? teamLogo(champion) : undefined}
+      />
     );
   }
 
@@ -204,8 +203,8 @@ export function ViewerPage() {
             <div className="match-grid">
               {latestRound.matches.map((match) => (
                 <div key={match.id} className="match-card card">
-                  <div className={`badge badge--${match.status === 'AWAITING_JUDGMENT' ? 'pending' : 'active'}`}>
-                    {match.status === 'AWAITING_JUDGMENT' ? 'Esperando veredicto' : match.status}
+                  <div className={`badge ${matchStatusBadge(match.status).className}`}>
+                    {matchStatusBadge(match.status).label}
                   </div>
                   <div className="match-teams">
                     <div className="team-name">
