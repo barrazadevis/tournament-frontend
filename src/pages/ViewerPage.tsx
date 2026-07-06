@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { useParams, useSearchParams } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import { apiGet } from '../api/client';
 import { connectNamespace } from '../api/socket';
 import { useTeams } from '../hooks/useTeams';
@@ -43,14 +43,10 @@ const PARTICIPANT_BADGE: Record<ParticipantStatus, { className: string; label: s
 export function ViewerPage() {
   const { tournamentId = '' } = useParams();
   const { teamName, teamMembers, teamLogo } = useTeams();
-  const [searchParams] = useSearchParams();
-  const initialTab = searchParams.get('tab');
   const [tournament, setTournament] = useState<Tournament | null>(null);
   const [remainingByMatch, setRemainingByMatch] = useState<Record<string, number>>({});
   const [championId, setChampionId] = useState<string | null>(null);
-  const [view, setView] = useState<'match' | 'bracket' | 'participants'>(
-    initialTab === 'bracket' || initialTab === 'participants' ? initialTab : 'match',
-  );
+  const [view, setView] = useState<'match' | 'bracket' | 'participants'>('match');
   const socketRef = useRef<ReturnType<typeof connectNamespace> | null>(null);
 
   const refresh = async () => {

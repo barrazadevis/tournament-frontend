@@ -118,7 +118,7 @@ export function BracketView({ tournament, teamName, teamLogo }: BracketViewProps
 
   return (
     <div className="bracket-wrap">
-      <div className="bracket-title">🏆 Llaves del torneo</div>
+      <div className="bracket-title">Eliminatoria</div>
       <div className="bracket-scroll">
         <div className="bracket-canvas" style={{ width: totalWidth, height: totalHeight + TOP_OFFSET }}>
           {Array.from({ length: totalRounds }, (_, col) => {

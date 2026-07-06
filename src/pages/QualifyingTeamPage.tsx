@@ -4,12 +4,14 @@ import { apiGet, apiPost, ApiError } from '../api/client';
 import { AppHeader } from '../components/AppHeader';
 import { useTeams } from '../hooks/useTeams';
 import { teamStorageKey } from '../utils/teamStorage';
+import { useModal } from '../components/ModalProvider';
 import type { QualifyingRound } from '../api/types';
 
 export function QualifyingTeamPage() {
   const { tournamentId = '', teamId = '' } = useParams();
   const navigate = useNavigate();
   const { teamName } = useTeams();
+  const { alertModal } = useModal();
   const [round, setRound] = useState<QualifyingRound | null>(null);
   const [closed, setClosed] = useState(false);
   const [content, setContent] = useState('');
@@ -46,7 +48,7 @@ export function QualifyingTeamPage() {
   const handleSubmit = async () => {
     const trimmed = content.trim();
     if (!trimmed) {
-      alert('Escribe tu solución antes de enviar.');
+      await alertModal('Escribe tu solución antes de enviar.');
       return;
     }
     setSubmitting(true);
@@ -55,7 +57,7 @@ export function QualifyingTeamPage() {
       await refresh();
     } catch (error) {
       setSubmitting(false);
-      alert(error instanceof ApiError ? error.message : 'No se pudo enviar la solución.');
+      await alertModal(error instanceof ApiError ? error.message : 'No se pudo enviar la solución.');
     }
   };
 

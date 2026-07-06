@@ -276,6 +276,53 @@ input {
   max-width: 1000px;
 }
 
+.tournaments-admin-screen {
+  max-width: 800px;
+}
+
+.tournament-admin-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.tournament-admin-card {
+  padding: 1.25rem 1.5rem;
+}
+
+.tournament-admin-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.tournament-admin-name {
+  font-weight: 700;
+  font-size: 1.05rem;
+  margin-bottom: 0.3rem;
+}
+
+.tournament-admin-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.tournament-admin-actions button,
+.tournament-admin-actions a {
+  margin-bottom: 0;
+}
+
+.tournament-admin-actions a {
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  border-radius: var(--radius-sm);
+}
+
 .team-card-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
@@ -1097,4 +1144,73 @@ input {
 .logo-option.selected {
   border-color: var(--gold);
   background: rgba(var(--gold-rgb), 0.12);
+}
+
+/* ===== Modales (reemplazan alert/confirm/prompt nativos) ===== */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(10, 31, 68, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+  z-index: 100;
+}
+
+.modal-box {
+  background: var(--bg);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 24px 48px rgba(10, 31, 68, 0.3);
+  padding: 1.75rem;
+  max-width: 420px;
+  width: 100%;
+}
+
+.modal-title {
+  margin-bottom: 0.6rem;
+}
+
+.modal-message {
+  color: var(--navy-soft);
+  line-height: 1.5;
+  margin: 0 0 1rem;
+  white-space: pre-wrap;
+}
+
+.modal-input {
+  margin-bottom: 1.25rem;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.6rem;
+}
+
+.modal-btn {
+  box-sizing: border-box;
+  height: 44px;
+  padding: 0 1.4rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+  line-height: 1;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+}
+
+.modal-btn-secondary {
+  background: var(--bg-subtle);
+  color: var(--navy);
+  border-color: var(--border);
+}
+
+.modal-btn-primary {
+  background: var(--gold);
+  color: var(--navy);
+}
+
+.modal-btn-danger {
+  background: var(--danger);
+  color: #fff;
 }

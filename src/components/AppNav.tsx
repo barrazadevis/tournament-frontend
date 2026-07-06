@@ -5,15 +5,13 @@ type MenuKey = 'profesor' | 'usuario' | null;
 
 const PROFESOR_ITEMS = [
   { to: '/', label: 'Crear torneo' },
+  { to: '/tournaments', label: 'Ver torneos' },
   { to: '/teams', label: 'Ver equipos' },
 ];
 
-const USUARIO_ITEMS = [
-  { to: '/select-tournament/team-new', label: 'Registrar equipo' },
-  { to: '/select-tournament/team-rejoin', label: 'Entrar' },
-];
+const USUARIO_ITEMS = [{ to: '/select-tournament/team', label: 'Portal de equipo' }];
 
-const PROFESOR_PREFIXES = ['/', '/judge', '/teams'];
+const PROFESOR_PREFIXES = ['/', '/judge', '/teams', '/tournaments'];
 const USUARIO_PREFIXES = ['/team/', '/match', '/qualifying'];
 
 export function AppNav() {

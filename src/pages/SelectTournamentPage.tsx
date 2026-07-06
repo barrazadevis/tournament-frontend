@@ -6,8 +6,7 @@ import type { TournamentSummary } from '../api/types';
 
 const DESTINATIONS: Record<string, { title: string; buildPath: (id: string) => string }> = {
   viewer: { title: 'Elige el torneo que quieres ver', buildPath: (id) => `/viewer/${id}` },
-  'team-new': { title: 'Elige el torneo para registrar tu equipo', buildPath: (id) => `/team/${id}` },
-  'team-rejoin': { title: 'Elige el torneo para entrar', buildPath: (id) => `/team/${id}?tab=rejoin` },
+  team: { title: 'Elige el torneo de tu equipo', buildPath: (id) => `/team/${id}` },
 };
 
 const STATUS_LABEL: Record<string, string> = {

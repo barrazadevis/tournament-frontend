@@ -1,5 +1,6 @@
 import { BrowserRouter, Route, Routes } from 'react-router-dom';
 import { AppNav } from './components/AppNav';
+import { ModalProvider } from './components/ModalProvider';
 import { HomePage } from './pages/HomePage';
 import { ViewerPage } from './pages/ViewerPage';
 import { JudgePage } from './pages/JudgePage';
@@ -8,6 +9,7 @@ import { TeamMatchPage } from './pages/TeamMatchPage';
 import { QualifyingTeamPage } from './pages/QualifyingTeamPage';
 import { SelectTournamentPage } from './pages/SelectTournamentPage';
 import { TeamsListPage } from './pages/TeamsListPage';
+import { ManageTournamentsPage } from './pages/ManageTournamentsPage';
 import { SettingsPage } from './pages/SettingsPage';
 
 /**
@@ -20,6 +22,7 @@ import { SettingsPage } from './pages/SettingsPage';
  * - /qualifying/:tournamentId/:teamId -> clasificatoria (a donde el portal redirige)
  * - /select-tournament/:destination -> elegir torneo antes de ir a viewer/team (usado por AppNav)
  * - /teams     -> registro global de equipos
+ * - /tournaments -> gestionar torneos (renombrar, eliminar, reiniciar, agregar equipos a un DRAFT)
  * - /settings  -> placeholder, pendiente para futuras opciones
  *
  * `AppNav` es un menú persistente (Panel profesor / Panel usuario / Configuración)
@@ -28,27 +31,30 @@ import { SettingsPage } from './pages/SettingsPage';
  */
 export function App() {
   return (
-    <BrowserRouter>
-      <AppNav />
-      <Routes>
-        <Route path="/" element={<HomePage />} />
-        <Route path="/viewer/:tournamentId" element={<ViewerPage />} />
-        <Route path="/judge/:tournamentId" element={<JudgePage />} />
-        <Route path="/team/:tournamentId" element={<TeamPortalPage />} />
-        <Route path="/match/:tournamentId/:matchId/:teamId" element={<TeamMatchPage />} />
-        <Route path="/qualifying/:tournamentId/:teamId" element={<QualifyingTeamPage />} />
-        <Route path="/select-tournament/:destination" element={<SelectTournamentPage />} />
-        <Route path="/teams" element={<TeamsListPage />} />
-        <Route path="/settings" element={<SettingsPage />} />
-        <Route
-          path="*"
-          element={
-            <p style={{ padding: '2rem', textAlign: 'center' }}>
-              Ruta no encontrada. Pide el link correcto a tu profesor.
-            </p>
-          }
-        />
-      </Routes>
-    </BrowserRouter>
+    <ModalProvider>
+      <BrowserRouter>
+        <AppNav />
+        <Routes>
+          <Route path="/" element={<HomePage />} />
+          <Route path="/viewer/:tournamentId" element={<ViewerPage />} />
+          <Route path="/judge/:tournamentId" element={<JudgePage />} />
+          <Route path="/team/:tournamentId" element={<TeamPortalPage />} />
+          <Route path="/match/:tournamentId/:matchId/:teamId" element={<TeamMatchPage />} />
+          <Route path="/qualifying/:tournamentId/:teamId" element={<QualifyingTeamPage />} />
+          <Route path="/select-tournament/:destination" element={<SelectTournamentPage />} />
+          <Route path="/teams" element={<TeamsListPage />} />
+          <Route path="/tournaments" element={<ManageTournamentsPage />} />
+          <Route path="/settings" element={<SettingsPage />} />
+          <Route
+            path="*"
+            element={
+              <p style={{ padding: '2rem', textAlign: 'center' }}>
+                Ruta no encontrada. Pide el link correcto a tu profesor.
+              </p>
+            }
+          />
+        </Routes>
+      </BrowserRouter>
+    </ModalProvider>
   );
 }

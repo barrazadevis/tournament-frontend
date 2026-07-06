@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
-import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { apiGet, apiPost, ApiError } from '../api/client';
 import { AppHeader } from '../components/AppHeader';
 import { teamStorageKey } from '../utils/teamStorage';
 import { TEAM_LOGOS } from '../utils/teamLogos';
+import { useModal } from '../components/ModalProvider';
 import type { QualifyingRound, Team, Tournament } from '../api/types';
 
 interface StoredTeam {
@@ -14,9 +15,9 @@ interface StoredTeam {
 export function TeamPortalPage() {
   const { tournamentId = '' } = useParams();
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
+  const { alertModal } = useModal();
   const [stored, setStored] = useState<StoredTeam | null>(null);
-  const [mode, setMode] = useState<'new' | 'rejoin'>(searchParams.get('tab') === 'rejoin' ? 'rejoin' : 'new');
+  const [mode, setMode] = useState<'new' | 'rejoin'>('new');
   const [teamNameInput, setTeamNameInput] = useState('');
   const [members, setMembers] = useState(['']);
   const [logo, setLogo] = useState(TEAM_LOGOS[0]);
@@ -110,11 +111,11 @@ export function TeamPortalPage() {
     const name = teamNameInput.trim();
     const memberNames = members.map((m) => m.trim()).filter(Boolean);
     if (!name) {
-      alert('Escribe el nombre de tu equipo.');
+      await alertModal('Escribe el nombre de tu equipo.');
       return;
     }
     if (memberNames.length === 0) {
-      alert('Agrega al menos un integrante.');
+      await alertModal('Agrega al menos un integrante.');
       return;
     }
 
@@ -126,14 +127,14 @@ export function TeamPortalPage() {
       setStored(newStored);
     } catch (error) {
       setRegistering(false);
-      alert(error instanceof ApiError ? error.message : 'No se pudo registrar el equipo.');
+      await alertModal(error instanceof ApiError ? error.message : 'No se pudo registrar el equipo.');
     }
   };
 
   const handleRejoin = async () => {
     const name = rejoinNameInput.trim();
     if (!name) {
-      alert('Escribe el nombre con el que se registraron.');
+      await alertModal('Escribe el nombre con el que se registraron.');
       return;
     }
 
@@ -143,7 +144,7 @@ export function TeamPortalPage() {
       const match = teams.find((t) => t.name.trim().toLowerCase() === name.toLowerCase());
       if (!match) {
         setRegistering(false);
-        alert(
+        await alertModal(
           'No encontramos un equipo con ese nombre. Si es la primera vez que se registran, usa la pestaña "Equipo nuevo".',
         );
         return;
@@ -153,7 +154,7 @@ export function TeamPortalPage() {
       setStored(newStored);
     } catch (error) {
       setRegistering(false);
-      alert(error instanceof ApiError ? error.message : 'No se pudo buscar el equipo.');
+      await alertModal(error instanceof ApiError ? error.message : 'No se pudo buscar el equipo.');
     }
   };
 

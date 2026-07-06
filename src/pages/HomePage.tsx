@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { apiPost, ApiError } from '../api/client';
 import { AppHeader } from '../components/AppHeader';
+import { useModal } from '../components/ModalProvider';
 
 interface CreatedTournament {
   id: string;
@@ -8,6 +9,7 @@ interface CreatedTournament {
 }
 
 export function HomePage() {
+  const { alertModal } = useModal();
   const [nameInput, setNameInput] = useState('');
   const [creating, setCreating] = useState(false);
   const [tournament, setTournament] = useState<CreatedTournament | null>(null);
@@ -16,7 +18,7 @@ export function HomePage() {
   const handleCreate = async () => {
     const name = nameInput.trim();
     if (!name) {
-      alert('Escribe un nombre para el torneo.');
+      await alertModal('Escribe un nombre para el torneo.');
       return;
     }
     setCreating(true);
@@ -24,7 +26,7 @@ export function HomePage() {
       const created = await apiPost<CreatedTournament>('/tournaments', { name });
       setTournament(created);
     } catch (error) {
-      alert(error instanceof ApiError ? error.message : 'No se pudo crear el torneo.');
+      await alertModal(error instanceof ApiError ? error.message : 'No se pudo crear el torneo.');
     } finally {
       setCreating(false);
     }

@@ -6,12 +6,14 @@ import { useTeams } from '../hooks/useTeams';
 import { formatSeconds } from '../utils/format';
 import { AppHeader } from '../components/AppHeader';
 import { teamStorageKey } from '../utils/teamStorage';
+import { useModal } from '../components/ModalProvider';
 import type { Match, TimerTickEvent, MatchUpdatedEvent } from '../api/types';
 
 export function TeamMatchPage() {
   const { tournamentId = '', matchId = '', teamId = '' } = useParams();
   const navigate = useNavigate();
   const { teamName, teamLogo } = useTeams();
+  const { alertModal } = useModal();
   const [match, setMatch] = useState<Match | null>(null);
   const [content, setContent] = useState('');
   const [remaining, setRemaining] = useState<number | null>(null);
@@ -45,7 +47,7 @@ export function TeamMatchPage() {
     socket.on('submission_rejected', (event: { matchId: string; reason?: string }) => {
       if (event.matchId === matchId) {
         setSubmitting(false);
-        alert(event.reason || 'No se pudo enviar la solución.');
+        void alertModal(event.reason || 'No se pudo enviar la solución.');
       }
     });
 
@@ -63,7 +65,7 @@ export function TeamMatchPage() {
   const handleSubmit = () => {
     const trimmed = content.trim();
     if (!trimmed) {
-      alert('Escribe tu solución antes de enviar.');
+      void alertModal('Escribe tu solución antes de enviar.');
       return;
     }
     setSubmitting(true);

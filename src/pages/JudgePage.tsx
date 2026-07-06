@@ -5,22 +5,20 @@ import { connectNamespace } from '../api/socket';
 import { useTeams } from '../hooks/useTeams';
 import { formatSeconds } from '../utils/format';
 import { BracketView } from '../components/BracketView';
-import type {
-  Tournament,
-  QualifyingRound,
-  TimerTickEvent,
-  TournamentFinishedEvent,
-  Team,
-} from '../api/types';
+import { StartTournamentPanel } from '../components/StartTournamentPanel';
+import { statusBadge } from '../utils/tournamentStatus';
+import { useModal } from '../components/ModalProvider';
+import type { Tournament, QualifyingRound, TimerTickEvent, TournamentFinishedEvent } from '../api/types';
 
 export function JudgePage() {
   const { tournamentId = '' } = useParams();
   const { teamName, teamLogo } = useTeams();
+  const { promptModal } = useModal();
   const [tournament, setTournament] = useState<Tournament | null>(null);
   const [qualifying, setQualifying] = useState<QualifyingRound | null>(null);
   const [remainingByMatch, setRemainingByMatch] = useState<Record<string, number>>({});
   const [championId, setChampionId] = useState<string | null>(null);
-  const [timerDuration, setTimerDuration] = useState(300);
+  const [timerDurationMinutes, setTimerDurationMinutes] = useState(5);
   const socketRef = useRef<ReturnType<typeof connectNamespace> | null>(null);
 
   const refresh = async () => {
@@ -70,15 +68,15 @@ export function JudgePage() {
   }, [tournamentId]);
 
   const startMatch = (matchId: string) =>
-    socketRef.current?.emit('start_match', { matchId, timerDurationSeconds: timerDuration });
+    socketRef.current?.emit('start_match', { matchId, timerDurationSeconds: timerDurationMinutes * 60 });
 
   const judgeMatch = (matchId: string, approve: boolean) =>
     socketRef.current?.emit('judge_verdict', { matchId, approve });
 
-  const advanceRound = (currentRoundOrder: number, isFinalMatch: boolean) => {
+  const advanceRound = async (currentRoundOrder: number, isFinalMatch: boolean) => {
     let nextRoundName = '';
     if (!isFinalMatch) {
-      const input = window.prompt('Nombre de la siguiente ronda (ej. "Semifinal"):');
+      const input = await promptModal('Nombre de la siguiente ronda:', { placeholder: 'ej. "Semifinal"' });
       if (!input) return;
       nextRoundName = input;
     }
@@ -86,7 +84,7 @@ export function JudgePage() {
       tournamentId,
       currentRoundOrder,
       nextRoundName,
-      timerDurationSeconds: timerDuration,
+      timerDurationSeconds: timerDurationMinutes * 60,
     });
   };
 
@@ -133,17 +131,22 @@ export function JudgePage() {
       <header className="judge-header">
         <div>
           <div className="judge-header-eyebrow">Panel del juez</div>
-          <h1>{tournament.name} — {tournament.status}</h1>
+          <h1>
+            {tournament.name}{' '}
+            <span className={`badge ${statusBadge(tournament.status).className}`}>
+              {statusBadge(tournament.status).label}
+            </span>
+          </h1>
         </div>
         <label className="config-bar">
-          Duración del timer:
+          Duración de match:
           <input
             type="number"
-            value={timerDuration}
-            min={10}
-            onChange={(e) => setTimerDuration(Number(e.target.value) || 300)}
+            value={timerDurationMinutes}
+            min={1}
+            onChange={(e) => setTimerDurationMinutes(Number(e.target.value) || 5)}
           />
-          seg
+          min
         </label>
       </header>
 
@@ -295,131 +298,6 @@ function BracketPanel({ round, teamName, teamLogo, remainingFor, onStart, onJudg
           </div>
         );
       })}
-    </div>
-  );
-}
-
-interface StartTournamentPanelProps {
-  tournamentId: string;
-  onStarted: () => void;
-}
-
-function StartTournamentPanel({ tournamentId, onStarted }: StartTournamentPanelProps) {
-  const [teams, setTeams] = useState<Team[]>([]);
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-  const [caseTitle, setCaseTitle] = useState('');
-  const [caseDescription, setCaseDescription] = useState('');
-  const [timerDurationSeconds, setTimerDurationSeconds] = useState(300);
-  const [starting, setStarting] = useState(false);
-
-  useEffect(() => {
-    let cancelled = false;
-    apiGet<Team[]>('/teams').then((data) => {
-      if (!cancelled) setTeams(data);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  const toggleTeam = (id: string) => {
-    setSelectedIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-  };
-
-  const handleStart = async () => {
-    if (selectedIds.size < 2) {
-      alert('Selecciona al menos 2 equipos.');
-      return;
-    }
-    if (!caseTitle.trim() || !caseDescription.trim()) {
-      alert('Completa el título y la descripción del caso.');
-      return;
-    }
-
-    setStarting(true);
-    try {
-      await apiPost(`/tournaments/${tournamentId}/start`, {
-        teamIds: [...selectedIds],
-        caseTitle: caseTitle.trim(),
-        caseDescription: caseDescription.trim(),
-        timerDurationSeconds,
-      });
-      onStarted();
-    } catch (error) {
-      setStarting(false);
-      alert(error instanceof Error ? error.message : 'No se pudo iniciar el torneo.');
-    }
-  };
-
-  if (teams.length === 0) {
-    return (
-      <div className="card">
-        <p>Todavía no hay equipos registrados. Comparte el link de equipos primero.</p>
-      </div>
-    );
-  }
-
-  return (
-    <div className="card">
-      <h2>Iniciar torneo</h2>
-
-      <label>Selecciona los equipos participantes ({selectedIds.size} seleccionados)</label>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', marginBottom: '1.25rem' }}>
-        {teams.map((team) => (
-          <label key={team.id} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: 0 }}>
-            <input
-              type="checkbox"
-              style={{ width: 'auto', marginBottom: 0 }}
-              checked={selectedIds.has(team.id)}
-              onChange={() => toggleTeam(team.id)}
-            />
-            {team.name}
-          </label>
-        ))}
-      </div>
-
-      {selectedIds.size > 0 && (
-        <div className="seed-chips">
-          {[...selectedIds].map((id) => (
-            <span key={id} className="seed-chip">
-              {teams.find((t) => t.id === id)?.name}
-            </span>
-          ))}
-        </div>
-      )}
-
-      <label>Título del caso</label>
-      <input
-        type="text"
-        value={caseTitle}
-        onChange={(e) => setCaseTitle(e.target.value)}
-        placeholder="Cálculo de bono de vendedores"
-      />
-
-      <label>Descripción del caso</label>
-      <textarea
-        style={{ minHeight: '100px' }}
-        value={caseDescription}
-        onChange={(e) => setCaseDescription(e.target.value)}
-        placeholder="Diseñar el ciclo para calcular el bono de 20 vendedores según sus ventas"
-      />
-
-      <label>Duración del timer (segundos)</label>
-      <input
-        type="number"
-        min={10}
-        value={timerDurationSeconds}
-        onChange={(e) => setTimerDurationSeconds(Number(e.target.value) || 300)}
-      />
-
-      <button className="submit-btn" disabled={starting} onClick={handleStart}>
-        Iniciar torneo
-      </button>
     </div>
   );
 }
