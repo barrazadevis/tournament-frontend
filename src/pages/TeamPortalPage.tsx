@@ -308,7 +308,7 @@ export function TeamPortalPage() {
                 type="text"
                 value={rejoinCodeInput}
                 onChange={(e) => setRejoinCodeInput(e.target.value.toUpperCase())}
-                placeholder="XK7M2P"
+                placeholder="EQUI4827"
                 className="team-code-input"
               />
 
