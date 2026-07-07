@@ -55,7 +55,11 @@ export function TeamsListPage() {
                   ))}
                 </ul>
               )}
-              <button className="btn-reject" style={{ marginTop: '0.75rem' }} onClick={() => handleDelete(team)}>
+              <button
+                className="btn-reject team-card-action"
+                style={{ marginTop: '0.75rem' }}
+                onClick={() => handleDelete(team)}
+              >
                 Eliminar
               </button>
             </div>

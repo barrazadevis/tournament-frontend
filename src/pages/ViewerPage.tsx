@@ -6,7 +6,7 @@ import { useTeams } from '../hooks/useTeams';
 import { CountdownRing } from '../components/CountdownRing';
 import { BracketView } from '../components/BracketView';
 import { ChampionCelebration } from '../components/ChampionCelebration';
-import { matchStatusBadge } from '../utils/matchStatus';
+import { matchStatusBadge, matchAccentClass } from '../utils/matchStatus';
 import type { Tournament, QualifyingRound, TimerTickEvent, TournamentFinishedEvent } from '../api/types';
 
 type ParticipantStatus = 'compite' | 'avanza' | 'eliminado' | 'campeon';
@@ -274,7 +274,7 @@ export function ViewerPage() {
           ) : (
             <div className="match-grid">
               {latestRound.matches.map((match) => (
-                <div key={match.id} className="match-card card">
+                <div key={match.id} className={`match-card card ${matchAccentClass(match.status)}`}>
                   <div className={`badge ${matchStatusBadge(match.status).className}`}>
                     {matchStatusBadge(match.status).label}
                   </div>
