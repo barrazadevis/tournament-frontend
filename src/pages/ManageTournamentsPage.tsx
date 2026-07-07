@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { apiGet, apiPatch, apiDelete, apiPost, ApiError } from '../api/client';
 import { AppHeader } from '../components/AppHeader';
 import { StartTournamentPanel } from '../components/StartTournamentPanel';
+import { Modal } from '../components/Modal';
 import { statusBadge } from '../utils/tournamentStatus';
 import { useModal } from '../components/ModalProvider';
 import type { TournamentSummary } from '../api/types';
@@ -10,7 +11,7 @@ import type { TournamentSummary } from '../api/types';
 export function ManageTournamentsPage() {
   const { alertModal, confirmModal, promptModal } = useModal();
   const [tournaments, setTournaments] = useState<TournamentSummary[] | null>(null);
-  const [expandedDraftId, setExpandedDraftId] = useState<string | null>(null);
+  const [startModalTournamentId, setStartModalTournamentId] = useState<string | null>(null);
 
   const refresh = async () => {
     const data = await apiGet<TournamentSummary[]>('/tournaments');
@@ -89,11 +90,8 @@ export function ManageTournamentsPage() {
                       </Link>
                     )}
                     {isDraft && (
-                      <button
-                        className="btn-start"
-                        onClick={() => setExpandedDraftId(expandedDraftId === t.id ? null : t.id)}
-                      >
-                        {expandedDraftId === t.id ? 'Ocultar' : 'Agregar equipos / iniciar'}
+                      <button className="btn-start" onClick={() => setStartModalTournamentId(t.id)}>
+                        Agregar equipos / iniciar
                       </button>
                     )}
                     <button className="add-member-btn" onClick={() => handleRename(t)}>
@@ -109,20 +107,22 @@ export function ManageTournamentsPage() {
                     </button>
                   </div>
                 </div>
-
-                {isDraft && expandedDraftId === t.id && (
-                  <StartTournamentPanel
-                    tournamentId={t.id}
-                    onStarted={() => {
-                      setExpandedDraftId(null);
-                      refresh();
-                    }}
-                  />
-                )}
               </div>
             );
           })}
         </div>
+      )}
+
+      {startModalTournamentId && (
+        <Modal onClose={() => setStartModalTournamentId(null)}>
+          <StartTournamentPanel
+            tournamentId={startModalTournamentId}
+            onStarted={() => {
+              setStartModalTournamentId(null);
+              refresh();
+            }}
+          />
+        </Modal>
       )}
     </div>
   );

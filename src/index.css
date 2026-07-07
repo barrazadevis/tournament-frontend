@@ -1197,6 +1197,36 @@ input {
   border-color: var(--navy);
 }
 
+.entry-tab:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ===== Sub-pestañas de casos (una por ronda, dentro de "2. Casos") ===== */
+.case-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.case-tab {
+  background: var(--bg-subtle);
+  color: var(--navy-soft);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 0.5rem 0.9rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.case-tab.active {
+  background: var(--gold);
+  color: var(--navy);
+  border-color: var(--gold);
+}
+
 /* ===== Selector de logo (registro de equipo) ===== */
 .logo-picker {
   display: grid;
@@ -1406,4 +1436,29 @@ input {
 .modal-btn-danger {
   background: var(--danger);
   color: #fff;
+}
+
+/* ===== Modal genérico (Modal.tsx) — contenido arbitrario, no solo mensajes ===== */
+.modal-panel {
+  position: relative;
+  max-width: 640px;
+  width: 100%;
+  max-height: 85vh;
+  overflow-y: auto;
+}
+
+.modal-close-btn {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  background: var(--bg-subtle);
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  width: 32px;
+  height: 32px;
+  cursor: pointer;
+  font-size: 1rem;
+  line-height: 1;
+  color: var(--navy-soft);
+  z-index: 1;
 }

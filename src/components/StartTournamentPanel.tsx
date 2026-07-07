@@ -22,6 +22,8 @@ export function StartTournamentPanel({ tournamentId, onStarted }: StartTournamen
   const [cases, setCases] = useState<CaseInput[]>([]);
   const [timerDurationMinutes, setTimerDurationMinutes] = useState(5);
   const [starting, setStarting] = useState(false);
+  const [activeTab, setActiveTab] = useState<'teams' | 'cases'>('teams');
+  const [activeCaseIndex, setActiveCaseIndex] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
@@ -44,6 +46,7 @@ export function StartTournamentPanel({ tournamentId, onStarted }: StartTournamen
   // través de un cambio estructural (ej. cruzar un umbral de potencia de 2).
   useEffect(() => {
     setCases(roundLabels.map(() => ({ title: '', description: '' })));
+    setActiveCaseIndex(0);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [roundLabelsKey]);
 
@@ -58,6 +61,13 @@ export function StartTournamentPanel({ tournamentId, onStarted }: StartTournamen
 
   const updateCase = (index: number, field: keyof CaseInput, value: string) => {
     setCases((prev) => prev.map((c, i) => (i === index ? { ...c, [field]: value } : c)));
+  };
+
+  const canGoToCases = selectedIds.size >= 2;
+
+  const goToCases = () => {
+    if (!canGoToCases) return;
+    setActiveTab('cases');
   };
 
   const handleStart = async () => {
@@ -96,73 +106,130 @@ export function StartTournamentPanel({ tournamentId, onStarted }: StartTournamen
     <div className="card">
       <h2>Iniciar torneo</h2>
 
-      <div className="team-select-summary">
-        <label style={{ marginBottom: 0 }}>Selecciona los equipos participantes ({selectedIds.size} seleccionados)</label>
-        {selectedIds.size > 0 && (
-          <button type="button" className="team-select-clear" onClick={() => setSelectedIds(new Set())}>
-            Limpiar selección
-          </button>
-        )}
-      </div>
-      <div className="team-select-grid">
-        {teams.map((team) => {
-          const selected = selectedIds.has(team.id);
-          return (
-            <button
-              type="button"
-              key={team.id}
-              className={`team-select-option${selected ? ' selected' : ''}`}
-              onClick={() => toggleTeam(team.id)}
-              aria-pressed={selected}
-            >
-              <span className="team-select-logo">{team.logo ?? team.name.charAt(0).toUpperCase()}</span>
-              <span className="team-select-name">{team.name}</span>
-              <span className="team-select-check">{selected ? '✓' : ''}</span>
-            </button>
-          );
-        })}
+      <div className="entry-tabs">
+        <button
+          type="button"
+          className={`entry-tab${activeTab === 'teams' ? ' active' : ''}`}
+          onClick={() => setActiveTab('teams')}
+        >
+          1. Equipos ({selectedIds.size})
+        </button>
+        <button
+          type="button"
+          className={`entry-tab${activeTab === 'cases' ? ' active' : ''}`}
+          onClick={goToCases}
+          disabled={!canGoToCases}
+          title={canGoToCases ? undefined : 'Selecciona al menos 2 equipos primero'}
+        >
+          2. Casos
+        </button>
       </div>
 
-      {roundLabels.length > 0 && (
+      {activeTab === 'teams' ? (
         <>
-          <div className="hint" style={{ marginBottom: '1rem' }}>
-            {roundLabels.length === 1
-              ? 'Se necesita 1 caso para esta ronda.'
-              : `Se necesitan ${roundLabels.length} casos, uno por ronda.`}
+          <div className="team-select-summary">
+            <label style={{ marginBottom: 0 }}>
+              Selecciona los equipos participantes ({selectedIds.size} seleccionados)
+            </label>
+            {selectedIds.size > 0 && (
+              <button type="button" className="team-select-clear" onClick={() => setSelectedIds(new Set())}>
+                Limpiar selección
+              </button>
+            )}
           </div>
-          {roundLabels.map((label, i) => (
-            <div key={`${label}-${i}`} className="card" style={{ background: 'var(--bg-subtle)', marginBottom: '1rem' }}>
-              <h3 style={{ marginTop: 0 }}>{label}</h3>
-              <label>Título del caso</label>
-              <input
-                type="text"
-                value={cases[i]?.title ?? ''}
-                onChange={(e) => updateCase(i, 'title', e.target.value)}
-                placeholder="Cálculo de bono de vendedores"
-              />
-              <label>Descripción del caso</label>
-              <textarea
-                style={{ minHeight: '100px' }}
-                value={cases[i]?.description ?? ''}
-                onChange={(e) => updateCase(i, 'description', e.target.value)}
-                placeholder="Diseñar el ciclo para calcular el bono de 20 vendedores según sus ventas"
-              />
-            </div>
-          ))}
+          <div className="team-select-grid">
+            {teams.map((team) => {
+              const selected = selectedIds.has(team.id);
+              return (
+                <button
+                  type="button"
+                  key={team.id}
+                  className={`team-select-option${selected ? ' selected' : ''}`}
+                  onClick={() => toggleTeam(team.id)}
+                  aria-pressed={selected}
+                >
+                  <span className="team-select-logo">{team.logo ?? team.name.charAt(0).toUpperCase()}</span>
+                  <span className="team-select-name">{team.name}</span>
+                  <span className="team-select-check">{selected ? '✓' : ''}</span>
+                </button>
+              );
+            })}
+          </div>
+
+          <button className="submit-btn" disabled={!canGoToCases} onClick={goToCases}>
+            Siguiente: Casos →
+          </button>
+        </>
+      ) : (
+        <>
+          <div className="case-tabs">
+            {roundLabels.map((label, i) => {
+              const filled = Boolean(cases[i]?.title.trim() && cases[i]?.description.trim());
+              return (
+                <button
+                  type="button"
+                  key={`${label}-${i}`}
+                  className={`case-tab${activeCaseIndex === i ? ' active' : ''}`}
+                  onClick={() => setActiveCaseIndex(i)}
+                >
+                  {label} {filled ? '✓' : ''}
+                </button>
+              );
+            })}
+          </div>
+
+          <div className="card" style={{ background: 'var(--bg-subtle)' }}>
+            <h3 style={{ marginTop: 0 }}>{roundLabels[activeCaseIndex]}</h3>
+            <label>Título del caso</label>
+            <input
+              type="text"
+              value={cases[activeCaseIndex]?.title ?? ''}
+              onChange={(e) => updateCase(activeCaseIndex, 'title', e.target.value)}
+              placeholder="Cálculo de bono de vendedores"
+            />
+            <label>Descripción del caso</label>
+            <textarea
+              style={{ minHeight: '100px' }}
+              value={cases[activeCaseIndex]?.description ?? ''}
+              onChange={(e) => updateCase(activeCaseIndex, 'description', e.target.value)}
+              placeholder="Diseñar el ciclo para calcular el bono de 20 vendedores según sus ventas"
+            />
+
+            {roundLabels.length > 1 && (
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '0.5rem' }}>
+                <button
+                  type="button"
+                  className="add-member-btn"
+                  disabled={activeCaseIndex === 0}
+                  onClick={() => setActiveCaseIndex((i) => Math.max(0, i - 1))}
+                >
+                  ← Anterior
+                </button>
+                <button
+                  type="button"
+                  className="add-member-btn"
+                  disabled={activeCaseIndex === roundLabels.length - 1}
+                  onClick={() => setActiveCaseIndex((i) => Math.min(roundLabels.length - 1, i + 1))}
+                >
+                  Siguiente caso →
+                </button>
+              </div>
+            )}
+          </div>
+
+          <label>Duración del encuentro (minutos)</label>
+          <input
+            type="number"
+            min={1}
+            value={timerDurationMinutes}
+            onChange={(e) => setTimerDurationMinutes(Number(e.target.value) || 5)}
+          />
+
+          <button className="submit-btn" disabled={starting} onClick={handleStart}>
+            Iniciar torneo
+          </button>
         </>
       )}
-
-      <label>Duración del encuentro (minutos)</label>
-      <input
-        type="number"
-        min={1}
-        value={timerDurationMinutes}
-        onChange={(e) => setTimerDurationMinutes(Number(e.target.value) || 5)}
-      />
-
-      <button className="submit-btn" disabled={starting} onClick={handleStart}>
-        Iniciar torneo
-      </button>
     </div>
   );
 }
