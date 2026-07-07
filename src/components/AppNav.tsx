@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { useAuth } from './AuthProvider';
 
 type MenuKey = 'profesor' | 'usuario' | null;
 
@@ -19,6 +20,8 @@ export function AppNav() {
   const location = useLocation();
   const navigate = useNavigate();
   const navRef = useRef<HTMLElement>(null);
+  const { status, user, logout } = useAuth();
+  const isAuthenticated = status === 'authenticated';
 
   useEffect(() => {
     const onClickOutside = (e: MouseEvent) => {
@@ -45,24 +48,26 @@ export function AppNav() {
         </div>
 
         <div className="app-nav-items">
-          <div className="app-nav-menu">
-            <button
-              type="button"
-              className={`app-nav-item${isProfesorActive ? ' current' : ''}${open === 'profesor' ? ' open' : ''}`}
-              onClick={() => toggle('profesor')}
-            >
-              Panel profesor <span className="app-nav-caret">▾</span>
-            </button>
-            {open === 'profesor' && (
-              <div className="app-nav-dropdown">
-                {PROFESOR_ITEMS.map((item) => (
-                  <Link key={item.to} to={item.to} className="app-nav-dropdown-item">
-                    {item.label}
-                  </Link>
-                ))}
-              </div>
-            )}
-          </div>
+          {isAuthenticated && (
+            <div className="app-nav-menu">
+              <button
+                type="button"
+                className={`app-nav-item${isProfesorActive ? ' current' : ''}${open === 'profesor' ? ' open' : ''}`}
+                onClick={() => toggle('profesor')}
+              >
+                Panel profesor <span className="app-nav-caret">▾</span>
+              </button>
+              {open === 'profesor' && (
+                <div className="app-nav-dropdown">
+                  {PROFESOR_ITEMS.map((item) => (
+                    <Link key={item.to} to={item.to} className="app-nav-dropdown-item">
+                      {item.label}
+                    </Link>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
 
           <div className="app-nav-menu">
             <button
@@ -90,9 +95,29 @@ export function AppNav() {
             Ver torneo
           </Link>
 
-          <Link className={`app-nav-item${location.pathname === '/settings' ? ' current' : ''}`} to="/settings">
-            Configuración
-          </Link>
+          {isAuthenticated && (
+            <Link className={`app-nav-item${location.pathname === '/settings' ? ' current' : ''}`} to="/settings">
+              Configuración
+            </Link>
+          )}
+
+          {isAuthenticated ? (
+            <button
+              type="button"
+              className="app-nav-item"
+              title={user?.email}
+              onClick={() => {
+                void logout();
+                navigate('/login');
+              }}
+            >
+              Cerrar sesión
+            </button>
+          ) : (
+            <Link className={`app-nav-item${location.pathname === '/login' ? ' current' : ''}`} to="/login">
+              Acceso profesor
+            </Link>
+          )}
         </div>
       </div>
     </nav>
