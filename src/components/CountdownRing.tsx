@@ -1,4 +1,5 @@
 import { formatSeconds } from '../utils/format';
+import { timerUrgencyColor } from '../utils/timerUrgency';
 
 interface CountdownRingProps {
   remainingSeconds: number;
@@ -20,7 +21,7 @@ export function CountdownRing({
   const center = size / 2;
   const fraction = totalSeconds > 0 ? remainingSeconds / totalSeconds : 0;
   const offset = circumference * (1 - fraction);
-  const isUrgent = totalSeconds > 0 && fraction <= 0.15;
+  const color = timerUrgencyColor(remainingSeconds, totalSeconds);
 
   return (
     <div style={{ position: 'relative', width: size, height: size }}>
@@ -31,7 +32,7 @@ export function CountdownRing({
           cy={center}
           r={radius}
           fill="none"
-          stroke={isUrgent ? 'var(--danger)' : 'var(--gold)'}
+          stroke={color}
           strokeWidth={strokeWidth}
           strokeLinecap="round"
           strokeDasharray={circumference}
@@ -42,14 +43,14 @@ export function CountdownRing({
       </svg>
       {showLabel && (
         <div
-          className="mono"
+          className="countdown-label"
           style={{
             position: 'absolute',
             inset: 0,
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            fontWeight: 700,
+            color,
             fontSize: size >= 200 ? 'clamp(2.5rem, 8vw, 4.5rem)' : '1.1rem',
           }}
         >

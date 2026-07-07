@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ReactElement } from 'react';
 import { apiGet, apiDelete, ApiError } from '../api/client';
 import { AppHeader } from '../components/AppHeader';
 import { useModal } from '../components/ModalProvider';
@@ -31,41 +31,47 @@ export function TeamsListPage() {
     }
   };
 
+  let body: ReactElement;
+  if (teams === null) {
+    body = <div className="waiting-screen">Cargando…</div>;
+  } else if (teams.length === 0) {
+    body = (
+      <div className="card">
+        <p>Todavía no se ha registrado ningún equipo.</p>
+      </div>
+    );
+  } else {
+    body = (
+      <div className="team-card-grid">
+        {teams.map((team) => (
+          <div key={team.id} className="team-card card">
+            <div className="team-card-logo">{team.logo ?? team.name.charAt(0).toUpperCase()}</div>
+            <div className="team-card-name">{team.name}</div>
+            {team.code && <span className="team-code-badge">{team.code}</span>}
+            {team.members && team.members.length > 0 && (
+              <ul className="team-members-list team-card-members">
+                {team.members.map((member, i) => (
+                  <li key={`${member}-${i}`}>{member}</li>
+                ))}
+              </ul>
+            )}
+            <button
+              className="btn-reject team-card-action"
+              style={{ marginTop: '0.75rem' }}
+              onClick={() => handleDelete(team)}
+            >
+              Eliminar
+            </button>
+          </div>
+        ))}
+      </div>
+    );
+  }
+
   return (
     <div className="screen teams-screen">
       <AppHeader subtitle="Equipos registrados" />
-
-      {teams === null ? (
-        <div className="waiting-screen">Cargando…</div>
-      ) : teams.length === 0 ? (
-        <div className="card">
-          <p>Todavía no se ha registrado ningún equipo.</p>
-        </div>
-      ) : (
-        <div className="team-card-grid">
-          {teams.map((team) => (
-            <div key={team.id} className="team-card card">
-              <div className="team-card-logo">{team.logo ?? team.name.charAt(0).toUpperCase()}</div>
-              <div className="team-card-name">{team.name}</div>
-              {team.code && <span className="team-code-badge">{team.code}</span>}
-              {team.members && team.members.length > 0 && (
-                <ul className="team-members-list team-card-members">
-                  {team.members.map((member, i) => (
-                    <li key={i}>{member}</li>
-                  ))}
-                </ul>
-              )}
-              <button
-                className="btn-reject team-card-action"
-                style={{ marginTop: '0.75rem' }}
-                onClick={() => handleDelete(team)}
-              >
-                Eliminar
-              </button>
-            </div>
-          ))}
-        </div>
-      )}
+      {body}
     </div>
   );
 }

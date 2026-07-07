@@ -64,6 +64,15 @@ h3 {
   font-variant-numeric: tabular-nums;
 }
 
+/* Tipografía compartida por CountdownRing y CountdownBar — mismo font-family
+   y peso en ambos, solo el tamaño cambia según el contexto (círculo grande
+   en el detalle, compacto en las tarjetas de la grilla). */
+.countdown-label {
+  font-family: var(--font-display);
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+}
+
 button {
   font-family: var(--font-body);
   cursor: pointer;
@@ -98,6 +107,7 @@ input {
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow);
+  padding: 1.5rem;
 }
 
 .badge {
@@ -430,14 +440,6 @@ input {
   font-size: 0.8rem;
 }
 
-.card {
-  background: var(--bg);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow);
-  padding: 1.5rem;
-}
-
 .waiting-screen {
   text-align: center;
   color: var(--navy-soft);
@@ -555,8 +557,16 @@ input {
 
 .round-name {
   font-size: clamp(2rem, 4vw, 3.5rem);
-  margin: 2vh 0 3vh;
+  margin: 2vh 0 0;
   letter-spacing: 0.02em;
+}
+
+.round-progress {
+  color: var(--navy-soft);
+  font-size: 0.95rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  margin-bottom: 3vh;
 }
 
 .match-grid {
@@ -572,7 +582,7 @@ input {
   flex-direction: column;
   gap: 1rem;
   align-items: center;
-  border-left: 4px solid var(--border);
+  cursor: pointer;
   transition: transform 0.15s ease, box-shadow 0.15s ease;
 }
 
@@ -581,20 +591,40 @@ input {
   box-shadow: 0 14px 28px rgba(10, 31, 68, 0.16);
 }
 
-.match-card--pending {
-  border-left-color: var(--gold);
+.match-submission-row {
+  display: flex;
+  justify-content: space-between;
+  width: 100%;
+  font-size: 0.85rem;
+  color: var(--navy-soft);
 }
 
-.match-card--active {
-  border-left-color: var(--success);
+/* ===== CountdownBar — versión lineal del timer, para la grilla de matches ===== */
+.countdown-bar-wrap {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.4rem;
 }
 
-.match-card--awaiting {
-  border-left-color: var(--gold-strong);
+.countdown-bar-track {
+  width: 100%;
+  height: 10px;
+  background: var(--track);
+  border-radius: 999px;
+  overflow: hidden;
 }
 
-.match-card--resolved {
-  border-left-color: var(--navy-soft);
+.countdown-bar-fill {
+  height: 100%;
+  border-radius: 999px;
+  transition: width 1s linear, background 0.3s ease;
+}
+
+.countdown-bar-label {
+  font-size: 1.25rem;
+  transition: color 0.3s ease;
 }
 
 .match-teams {
@@ -643,6 +673,68 @@ input {
   font-size: 1rem;
   max-width: 600px;
   text-align: center;
+}
+
+.hero-back-btn {
+  align-self: flex-start;
+  background: var(--bg-subtle);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--navy-soft);
+  padding: 0.5rem 1rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.hero-back-btn:hover {
+  border-color: var(--gold);
+  color: var(--navy);
+}
+
+.hero-timer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.hero-timer-label {
+  color: var(--navy-soft);
+  font-size: 0.85rem;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+.hero-rosters {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 1.5rem;
+  width: 100%;
+  max-width: 900px;
+}
+
+.hero-roster-card {
+  flex: 1;
+  min-width: 260px;
+  text-align: center;
+}
+
+.hero-roster-team {
+  font-weight: 700;
+  font-size: 1.15rem;
+  margin-bottom: 0.6rem;
+}
+
+.hero-roster-card .team-members-list {
+  padding: 0;
+  margin: 0;
+  list-style: none;
+  color: var(--navy-soft);
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
 }
 
 .champion-screen {
