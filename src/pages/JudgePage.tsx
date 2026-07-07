@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { apiGet, apiPost } from '../api/client';
 import { connectNamespace } from '../api/socket';
 import { useTeams } from '../hooks/useTeams';
@@ -14,8 +14,9 @@ import type { Tournament, QualifyingRound, TimerTickEvent, TournamentFinishedEve
 
 export function JudgePage() {
   const { tournamentId = '' } = useParams();
+  const navigate = useNavigate();
   const { teamName, teamLogo } = useTeams();
-  const { confirmModal } = useModal();
+  const { alertModal, confirmModal } = useModal();
   const [tournament, setTournament] = useState<Tournament | null>(null);
   const [qualifying, setQualifying] = useState<QualifyingRound | null>(null);
   const [remainingByMatch, setRemainingByMatch] = useState<Record<string, number>>({});
@@ -52,6 +53,17 @@ export function JudgePage() {
     socket.on('connect', () => {
       socket.emit('join_tournament', { tournamentId });
       refresh();
+    });
+    let sessionRejected = false;
+    socket.on('connect_error', (error: Error) => {
+      // El middleware de JudgeGateway rechaza el handshake con este mensaje
+      // exacto cuando el token es inválido/expiró. Otros connect_error
+      // (red inestable, etc.) los maneja solo el reintento automático del
+      // cliente de socket.io, sin molestar al profesor con un modal.
+      if (error.message !== 'No autorizado' || sessionRejected) return;
+      sessionRejected = true;
+      socket.disconnect();
+      alertModal('Tu sesión expiró o no es válida. Vuelve a iniciar sesión.').then(() => navigate('/login'));
     });
     socket.on('timer_tick', (event: TimerTickEvent) => {
       setRemainingByMatch((prev) => ({ ...prev, [event.matchId]: event.remainingSeconds }));

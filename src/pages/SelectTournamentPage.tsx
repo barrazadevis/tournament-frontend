@@ -11,6 +11,7 @@ const DESTINATIONS: Record<string, { title: string; buildPath: (id: string) => s
 
 const STATUS_LABEL: Record<string, string> = {
   DRAFT: 'Sin iniciar',
+  QUALIFYING: 'Clasificatoria en curso',
   IN_PROGRESS: 'En curso',
   FINISHED: 'Finalizado',
 };

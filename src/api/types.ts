@@ -9,6 +9,8 @@ export interface Team {
   name: string;
   members?: string[];
   logo?: string;
+  /** Solo presente en la respuesta de registro (una vez) y en /teams/roster (profesor). */
+  code?: string;
 }
 
 export type MatchStatus = 'PENDING' | 'ACTIVE' | 'AWAITING_JUDGMENT' | 'RESOLVED';
@@ -49,7 +51,7 @@ export interface Round {
   matches: Match[];
 }
 
-export type TournamentStatus = 'DRAFT' | 'IN_PROGRESS' | 'FINISHED';
+export type TournamentStatus = 'DRAFT' | 'QUALIFYING' | 'IN_PROGRESS' | 'FINISHED';
 
 export interface Tournament {
   id: string;

@@ -5,11 +5,17 @@ import { AppHeader } from '../components/AppHeader';
 import { teamStorageKey } from '../utils/teamStorage';
 import { TEAM_LOGOS } from '../utils/teamLogos';
 import { useModal } from '../components/ModalProvider';
-import type { QualifyingRound, Team, Tournament } from '../api/types';
+import type { QualifyingRound, Tournament } from '../api/types';
 
 interface StoredTeam {
   teamId: string;
   teamName: string;
+}
+
+interface PendingCode {
+  teamId: string;
+  teamName: string;
+  code: string;
 }
 
 export function TeamPortalPage() {
@@ -17,12 +23,13 @@ export function TeamPortalPage() {
   const navigate = useNavigate();
   const { alertModal } = useModal();
   const [stored, setStored] = useState<StoredTeam | null>(null);
+  const [pendingCode, setPendingCode] = useState<PendingCode | null>(null);
   const [tournamentStatus, setTournamentStatus] = useState<Tournament['status'] | null>(null);
   const [mode, setMode] = useState<'new' | 'rejoin'>('new');
   const [teamNameInput, setTeamNameInput] = useState('');
   const [members, setMembers] = useState(['']);
   const [logo, setLogo] = useState(TEAM_LOGOS[0]);
-  const [rejoinNameInput, setRejoinNameInput] = useState('');
+  const [rejoinCodeInput, setRejoinCodeInput] = useState('');
   const [registering, setRegistering] = useState(false);
   const [status, setStatus] = useState<{ icon: string; title: string; detail: string; spinner?: boolean } | null>(
     null,
@@ -140,46 +147,53 @@ export function TeamPortalPage() {
 
     setRegistering(true);
     try {
-      const team = await apiPost<{ id: string; name: string }>('/teams', { name, memberNames, logo });
-      const newStored = { teamId: team.id, teamName: team.name };
-      localStorage.setItem(teamStorageKey(tournamentId), JSON.stringify(newStored));
-      setStored(newStored);
+      const team = await apiPost<{ id: string; name: string; code: string }>('/teams', {
+        name,
+        memberNames,
+        logo,
+      });
+      setPendingCode({ teamId: team.id, teamName: team.name, code: team.code });
     } catch (error) {
       setRegistering(false);
       await alertModal(error instanceof ApiError ? error.message : 'No se pudo registrar el equipo.');
     }
   };
 
+  const confirmPendingCode = () => {
+    if (!pendingCode) return;
+    const newStored = { teamId: pendingCode.teamId, teamName: pendingCode.teamName };
+    localStorage.setItem(teamStorageKey(tournamentId), JSON.stringify(newStored));
+    setPendingCode(null);
+    setStored(newStored);
+  };
+
   const handleRejoin = async () => {
-    const name = rejoinNameInput.trim();
-    if (!name) {
-      await alertModal('Escribe el nombre con el que se registraron.');
+    const code = rejoinCodeInput.trim();
+    if (!code) {
+      await alertModal('Escribe el código de tu equipo.');
       return;
     }
 
     setRegistering(true);
     try {
-      const teams = await apiGet<Team[]>('/teams');
-      const match = teams.find((t) => t.name.trim().toLowerCase() === name.toLowerCase());
-      if (!match) {
-        setRegistering(false);
-        await alertModal(
-          'No encontramos un equipo con ese nombre. Si es la primera vez que se registran, usa la pestaña "Equipo nuevo".',
-        );
-        return;
-      }
-      const newStored = { teamId: match.id, teamName: match.name };
+      const team = await apiPost<{ id: string; name: string }>('/teams/rejoin', { code });
+      const newStored = { teamId: team.id, teamName: team.name };
       localStorage.setItem(teamStorageKey(tournamentId), JSON.stringify(newStored));
       setStored(newStored);
     } catch (error) {
       setRegistering(false);
-      await alertModal(error instanceof ApiError ? error.message : 'No se pudo buscar el equipo.');
+      await alertModal(
+        error instanceof ApiError
+          ? 'No encontramos un equipo con ese código. Si es la primera vez que se registran, usa la pestaña "Equipo nuevo".'
+          : 'No se pudo buscar el equipo.',
+      );
     }
   };
 
   const handleSwitchTeam = () => {
     localStorage.removeItem(teamStorageKey(tournamentId));
     setStored(null);
+    setPendingCode(null);
     setStatus(null);
     setRegistering(false);
     stopPolling();
@@ -193,7 +207,20 @@ export function TeamPortalPage() {
     <div className="screen">
       <AppHeader />
 
-      {!stored ? (
+      {pendingCode ? (
+        <div className="card">
+          <h2>¡Equipo registrado! 🎉</h2>
+          <p>
+            Este es el <strong>código único</strong> de "{pendingCode.teamName}" — solo ustedes y el profesor lo
+            conocen. Anótalo: lo van a necesitar para volver a entrar si cierran esta pantalla o cambian de
+            dispositivo.
+          </p>
+          <div className="team-code-reveal">{pendingCode.code}</div>
+          <button className="submit-btn" onClick={confirmPendingCode}>
+            Ya lo anoté, continuar
+          </button>
+        </div>
+      ) : !stored ? (
         <div className="card">
           <div className="entry-tabs">
             <button
@@ -273,15 +300,16 @@ export function TeamPortalPage() {
             <>
               <h2>Entra a tu equipo</h2>
               <div className="hint" style={{ marginTop: 0, marginBottom: '1rem' }}>
-                Escribe exactamente el mismo nombre con el que se registraron la primera vez —
-                los llevamos directo a su match, sin volver a pedir integrantes.
+                Escribe el código único que les mostramos al registrarse — se los mostramos una
+                sola vez, y solo su equipo y el profesor lo conocen.
               </div>
-              <label>Nombre del equipo</label>
+              <label>Código de equipo</label>
               <input
                 type="text"
-                value={rejoinNameInput}
-                onChange={(e) => setRejoinNameInput(e.target.value)}
-                placeholder="Los Refactorizadores"
+                value={rejoinCodeInput}
+                onChange={(e) => setRejoinCodeInput(e.target.value.toUpperCase())}
+                placeholder="XK7M2P"
+                className="team-code-input"
               />
 
               <button className="submit-btn" disabled={registering} onClick={handleRejoin}>

@@ -7,7 +7,7 @@ import { CountdownRing } from '../components/CountdownRing';
 import { BracketView } from '../components/BracketView';
 import { ChampionCelebration } from '../components/ChampionCelebration';
 import { matchStatusBadge } from '../utils/matchStatus';
-import type { Tournament, TimerTickEvent, TournamentFinishedEvent } from '../api/types';
+import type { Tournament, QualifyingRound, TimerTickEvent, TournamentFinishedEvent } from '../api/types';
 
 type ParticipantStatus = 'compite' | 'avanza' | 'eliminado' | 'campeon';
 
@@ -42,10 +42,60 @@ const PARTICIPANT_BADGE: Record<ParticipantStatus, { className: string; label: s
   campeon: { className: 'badge--champion', label: '🏆 Campeón' },
 };
 
+interface QualifyingViewerPanelProps {
+  qualifying: QualifyingRound;
+  teamName: (id: string) => string;
+  teamLogo: (id: string) => string | undefined;
+}
+
+/**
+ * Vista de solo lectura de la clasificatoria para el proyector — mismo
+ * contenido que ve el profesor en QualifyingPanel (JudgePage), sin los
+ * botones de aprobar/rechazar. No hay countdown: QualifyingRound no trackea
+ * un timerStartedAt server-side como sí lo hace Match.
+ */
+function QualifyingViewerPanel({ qualifying, teamName, teamLogo }: QualifyingViewerPanelProps) {
+  const submissionsByTeam = new Map(qualifying.submissions.map((s) => [s.teamId, s]));
+
+  return (
+    <div className="viewer-screen">
+      <h1 className="round-name">Ronda clasificatoria — avanzan {qualifying.targetQualifierCount} equipos</h1>
+
+      <div className="case-card card">
+        <h2>{qualifying.businessCase.title}</h2>
+        <p>{qualifying.businessCase.description}</p>
+      </div>
+
+      <div className="team-card-grid">
+        {qualifying.participantTeamIds.map((teamId) => {
+          const submission = submissionsByTeam.get(teamId);
+          const badge =
+            !submission
+              ? { className: 'badge--pending', label: 'Sin enviar' }
+              : submission.verdict === 'PENDING'
+                ? { className: 'badge--pending', label: 'Por juzgar' }
+                : submission.verdict === 'APPROVED'
+                  ? { className: 'badge--active', label: 'Aprobada' }
+                  : { className: 'badge--rejected', label: 'Rechazada' };
+
+          return (
+            <div key={teamId} className="team-card card">
+              <div className="team-card-logo">{teamLogo(teamId) ?? teamName(teamId).charAt(0).toUpperCase()}</div>
+              <div className="team-card-name">{teamName(teamId)}</div>
+              <span className={`badge ${badge.className}`}>{badge.label}</span>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 export function ViewerPage() {
   const { tournamentId = '' } = useParams();
   const { teamName, teamMembers, teamLogo } = useTeams();
   const [tournament, setTournament] = useState<Tournament | null>(null);
+  const [qualifying, setQualifying] = useState<QualifyingRound | null>(null);
   const [remainingByMatch, setRemainingByMatch] = useState<Record<string, number>>({});
   const [championId, setChampionId] = useState<string | null>(null);
   const [view, setView] = useState<'match' | 'bracket' | 'participants'>('match');
@@ -55,12 +105,21 @@ export function ViewerPage() {
     const data = await apiGet<Tournament>(`/tournaments/${tournamentId}`);
     setTournament(data);
 
-    if (data.rounds.length > 0) {
-      const latestRound = data.rounds[data.rounds.length - 1];
-      socketRef.current?.emit('join_tournament', { tournamentId });
-      for (const match of latestRound.matches) {
-        socketRef.current?.emit('join_match', { matchId: match.id });
+    if (data.rounds.length === 0) {
+      try {
+        const round = await apiGet<QualifyingRound>(`/tournaments/${tournamentId}/qualifying-round`);
+        setQualifying(round);
+      } catch {
+        setQualifying(null);
       }
+      return;
+    }
+
+    setQualifying(null);
+    const latestRound = data.rounds[data.rounds.length - 1];
+    socketRef.current?.emit('join_tournament', { tournamentId });
+    for (const match of latestRound.matches) {
+      socketRef.current?.emit('join_match', { matchId: match.id });
     }
   };
 
@@ -79,8 +138,18 @@ export function ViewerPage() {
       refresh();
     });
 
+    // No hay evento de socket para submissions/veredictos de la clasificatoria
+    // (TournamentEventBus solo emite timer_tick/match_updated/round_advanced/
+    // tournament_finished) — se hace polling mientras no exista ninguna Round
+    // todavía, igual que TeamPortalPage hace con el estado del equipo.
+    const pollId = setInterval(() => {
+      if (!socketRef.current) return;
+      refresh();
+    }, 4000);
+
     return () => {
       socket.disconnect();
+      clearInterval(pollId);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tournamentId]);
@@ -101,6 +170,9 @@ export function ViewerPage() {
   }
 
   if (tournament.rounds.length === 0) {
+    if (qualifying) {
+      return <QualifyingViewerPanel qualifying={qualifying} teamName={teamName} teamLogo={teamLogo} />;
+    }
     return <div className="waiting-screen">Esperando a que el profesor inicie el torneo…</div>;
   }
 
