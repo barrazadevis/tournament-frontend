@@ -1260,6 +1260,70 @@ input {
   margin-bottom: 1rem;
 }
 
+.test-case-editor {
+  margin: 1rem 0;
+  padding-top: 0.75rem;
+  border-top: 1px dashed var(--border);
+}
+
+.test-case-row {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+.test-case-row input {
+  flex: 1;
+  margin: 0;
+}
+
+.test-case-remove-btn {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--danger);
+  width: 2.2rem;
+  height: 2.2rem;
+  flex-shrink: 0;
+  padding: 0;
+}
+
+.execution-summary-inline {
+  margin-top: 0.4rem;
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.test-result-panel {
+  margin: 0.75rem 0;
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.test-result-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.test-result-row.passed {
+  color: var(--success);
+}
+
+.test-result-row.failed {
+  color: var(--danger);
+}
+
+.test-result-detail {
+  font-weight: 400;
+  font-size: 0.82rem;
+  color: var(--navy-soft);
+}
+
 .status-screen {
   text-align: center;
   padding: 2.5rem 1.5rem;

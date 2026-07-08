@@ -10,7 +10,17 @@ import { ChampionCelebration } from '../components/ChampionCelebration';
 import { statusBadge } from '../utils/tournamentStatus';
 import { roundNameForMatchCount } from '../utils/roundNaming';
 import { useModal } from '../components/ModalProvider';
-import type { Tournament, QualifyingRound, TimerTickEvent, TournamentFinishedEvent } from '../api/types';
+import type { ExecutionResult, Tournament, QualifyingRound, TimerTickEvent, TournamentFinishedEvent } from '../api/types';
+
+function executionBadge(result: ExecutionResult): { className: string; label: string } {
+  if (result.status === 'ERROR') return { className: 'badge--rejected', label: 'No se pudo ejecutar' };
+  const passed = result.testResults.filter((t) => t.passed).length;
+  const allPassed = passed === result.testResults.length;
+  return {
+    className: allPassed ? 'badge--active' : 'badge--rejected',
+    label: `${passed}/${result.testResults.length} casos de prueba`,
+  };
+}
 
 export function JudgePage() {
   const { tournamentId = '' } = useParams();
@@ -344,6 +354,11 @@ function BracketPanel({
                     </button>
                   </div>
                 </div>
+                {submission.executionResult && (
+                  <div className={`badge ${executionBadge(submission.executionResult).className}`}>
+                    {executionBadge(submission.executionResult).label}
+                  </div>
+                )}
                 {submission.content}
               </div>
             ))}

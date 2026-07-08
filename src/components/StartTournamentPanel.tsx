@@ -10,15 +10,26 @@ interface StartTournamentPanelProps {
   onStarted: () => void;
 }
 
+interface TestCaseInput {
+  input: string;
+  expectedOutput: string;
+}
+
 interface CaseInput {
   title: string;
   description: string;
+  testCases: TestCaseInput[];
 }
+
+type TournamentLanguage = 'PSEINT' | 'PYTHON';
+
+const MIN_TEST_CASES_FOR_PYTHON = 2;
 
 export function StartTournamentPanel({ tournamentId, onStarted }: StartTournamentPanelProps) {
   const { alertModal } = useModal();
   const [teams, setTeams] = useState<Team[]>([]);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [language, setLanguage] = useState<TournamentLanguage>('PSEINT');
   const [cases, setCases] = useState<CaseInput[]>([]);
   const [timerDurationMinutes, setTimerDurationMinutes] = useState(5);
   const [starting, setStarting] = useState(false);
@@ -45,7 +56,7 @@ export function StartTournamentPanel({ tournamentId, onStarted }: StartTournamen
   // orden de las etiquetas) — no se intenta preservar contenido parcial a
   // través de un cambio estructural (ej. cruzar un umbral de potencia de 2).
   useEffect(() => {
-    setCases(roundLabels.map(() => ({ title: '', description: '' })));
+    setCases(roundLabels.map(() => ({ title: '', description: '', testCases: [] })));
     setActiveCaseIndex(0);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [roundLabelsKey]);
@@ -59,8 +70,30 @@ export function StartTournamentPanel({ tournamentId, onStarted }: StartTournamen
     });
   };
 
-  const updateCase = (index: number, field: keyof CaseInput, value: string) => {
+  const updateCase = (index: number, field: 'title' | 'description', value: string) => {
     setCases((prev) => prev.map((c, i) => (i === index ? { ...c, [field]: value } : c)));
+  };
+
+  const addTestCase = (caseIndex: number) => {
+    setCases((prev) =>
+      prev.map((c, i) => (i === caseIndex ? { ...c, testCases: [...c.testCases, { input: '', expectedOutput: '' }] } : c)),
+    );
+  };
+
+  const updateTestCase = (caseIndex: number, testIndex: number, field: keyof TestCaseInput, value: string) => {
+    setCases((prev) =>
+      prev.map((c, i) =>
+        i === caseIndex
+          ? { ...c, testCases: c.testCases.map((t, j) => (j === testIndex ? { ...t, [field]: value } : t)) }
+          : c,
+      ),
+    );
+  };
+
+  const removeTestCase = (caseIndex: number, testIndex: number) => {
+    setCases((prev) =>
+      prev.map((c, i) => (i === caseIndex ? { ...c, testCases: c.testCases.filter((_, j) => j !== testIndex) } : c)),
+    );
   };
 
   const canGoToCases = selectedIds.size >= 2;
@@ -68,6 +101,12 @@ export function StartTournamentPanel({ tournamentId, onStarted }: StartTournamen
   const goToCases = () => {
     if (!canGoToCases) return;
     setActiveTab('cases');
+  };
+
+  const caseIsFilled = (c: CaseInput) => {
+    if (!c.title.trim() || !c.description.trim()) return false;
+    if (language !== 'PYTHON') return true;
+    return c.testCases.length >= MIN_TEST_CASES_FOR_PYTHON && c.testCases.every((t) => t.input.trim() && t.expectedOutput.trim());
   };
 
   const handleStart = async () => {
@@ -79,12 +118,26 @@ export function StartTournamentPanel({ tournamentId, onStarted }: StartTournamen
       await alertModal('Completa el título y la descripción de cada caso.');
       return;
     }
+    if (language === 'PYTHON' && !cases.every(caseIsFilled)) {
+      await alertModal(
+        `Cada caso necesita al menos ${MIN_TEST_CASES_FOR_PYTHON} casos de prueba, con entrada y salida esperada completas.`,
+      );
+      return;
+    }
 
     setStarting(true);
     try {
       await apiPost(`/tournaments/${tournamentId}/start`, {
         teamIds: [...selectedIds],
-        cases: cases.map((c) => ({ title: c.title.trim(), description: c.description.trim() })),
+        language,
+        cases: cases.map((c) => ({
+          title: c.title.trim(),
+          description: c.description.trim(),
+          testCases:
+            language === 'PYTHON'
+              ? c.testCases.map((t) => ({ input: t.input, expectedOutput: t.expectedOutput }))
+              : undefined,
+        })),
         timerDurationSeconds: timerDurationMinutes * 60,
       });
       onStarted();
@@ -105,6 +158,24 @@ export function StartTournamentPanel({ tournamentId, onStarted }: StartTournamen
   return (
     <div className="card">
       <h2>Iniciar torneo</h2>
+
+      <label>Lenguaje del torneo</label>
+      <div className="entry-tabs">
+        <button
+          type="button"
+          className={`entry-tab${language === 'PSEINT' ? ' active' : ''}`}
+          onClick={() => setLanguage('PSEINT')}
+        >
+          PSeInt
+        </button>
+        <button
+          type="button"
+          className={`entry-tab${language === 'PYTHON' ? ' active' : ''}`}
+          onClick={() => setLanguage('PYTHON')}
+        >
+          Python
+        </button>
+      </div>
 
       <div className="entry-tabs">
         <button
@@ -164,7 +235,7 @@ export function StartTournamentPanel({ tournamentId, onStarted }: StartTournamen
         <>
           <div className="case-tabs">
             {roundLabels.map((label, i) => {
-              const filled = Boolean(cases[i]?.title.trim() && cases[i]?.description.trim());
+              const filled = cases[i] ? caseIsFilled(cases[i]) : false;
               return (
                 <button
                   type="button"
@@ -194,6 +265,42 @@ export function StartTournamentPanel({ tournamentId, onStarted }: StartTournamen
               onChange={(e) => updateCase(activeCaseIndex, 'description', e.target.value)}
               placeholder="Diseñar el ciclo para calcular el bono de 20 vendedores según sus ventas"
             />
+
+            {language === 'PYTHON' && (
+              <div className="test-case-editor">
+                <label>
+                  Casos de prueba (mínimo {MIN_TEST_CASES_FOR_PYTHON}, con entradas distintas — el equipo verá el
+                  resultado al probar su código, pero nunca la salida esperada por adelantado)
+                </label>
+                {cases[activeCaseIndex]?.testCases.map((testCase, testIndex) => (
+                  <div key={testIndex} className="test-case-row">
+                    <input
+                      type="text"
+                      value={testCase.input}
+                      onChange={(e) => updateTestCase(activeCaseIndex, testIndex, 'input', e.target.value)}
+                      placeholder="Entrada (stdin)"
+                    />
+                    <input
+                      type="text"
+                      value={testCase.expectedOutput}
+                      onChange={(e) => updateTestCase(activeCaseIndex, testIndex, 'expectedOutput', e.target.value)}
+                      placeholder="Salida esperada"
+                    />
+                    <button
+                      type="button"
+                      className="test-case-remove-btn"
+                      onClick={() => removeTestCase(activeCaseIndex, testIndex)}
+                      aria-label="Quitar caso de prueba"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                ))}
+                <button type="button" className="add-member-btn" onClick={() => addTestCase(activeCaseIndex)}>
+                  + Agregar caso de prueba
+                </button>
+              </div>
+            )}
 
             {roundLabels.length > 1 && (
               <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '0.5rem' }}>

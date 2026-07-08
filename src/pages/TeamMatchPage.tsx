@@ -1,13 +1,15 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { apiGet } from '../api/client';
+import CodeMirror from '@uiw/react-codemirror';
+import { python } from '@codemirror/lang-python';
+import { apiGet, apiPost } from '../api/client';
 import { connectNamespace } from '../api/socket';
 import { useTeams } from '../hooks/useTeams';
 import { formatSeconds } from '../utils/format';
 import { AppHeader } from '../components/AppHeader';
 import { teamStorageKey } from '../utils/teamStorage';
 import { useModal } from '../components/ModalProvider';
-import type { Match, TimerTickEvent, MatchUpdatedEvent } from '../api/types';
+import type { ExecutionResult, Match, TimerTickEvent, MatchUpdatedEvent } from '../api/types';
 
 export function TeamMatchPage() {
   const { tournamentId = '', matchId = '', teamId = '' } = useParams();
@@ -18,6 +20,8 @@ export function TeamMatchPage() {
   const [content, setContent] = useState('');
   const [remaining, setRemaining] = useState<number | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [testing, setTesting] = useState(false);
+  const [testResult, setTestResult] = useState<ExecutionResult | null>(null);
   const socketRef = useRef<ReturnType<typeof connectNamespace> | null>(null);
 
   const refresh = async () => {
@@ -72,6 +76,23 @@ export function TeamMatchPage() {
     socketRef.current?.emit('submit_solution', { matchId, teamId, content: trimmed });
   };
 
+  const handleTestCode = async () => {
+    const trimmed = content.trim();
+    if (!trimmed) {
+      void alertModal('Escribe tu código antes de probarlo.');
+      return;
+    }
+    setTesting(true);
+    try {
+      const result = await apiPost<ExecutionResult>(`/matches/${matchId}/run`, { code: trimmed });
+      setTestResult(result);
+    } catch (error) {
+      void alertModal(error instanceof Error ? error.message : 'No se pudo probar el código.');
+    } finally {
+      setTesting(false);
+    }
+  };
+
   if (!match) return <div className="waiting-screen">Cargando…</div>;
 
   const opponentId = match.teamAId === teamId ? match.teamBId : match.teamAId;
@@ -115,15 +136,61 @@ export function TeamMatchPage() {
       </div>
 
       {banner ? (
-        <div className={`status-banner ${banner.kind}`}>{banner.message}</div>
+        <div className={`status-banner ${banner.kind}`}>
+          {banner.message}
+          {ownSubmission?.executionSummary && (
+            <div className="execution-summary-inline">
+              {ownSubmission.executionSummary.status === 'ERROR'
+                ? 'No se pudo ejecutar el código.'
+                : `${ownSubmission.executionSummary.testsPassed}/${ownSubmission.executionSummary.testsTotal} casos de prueba pasados`}
+            </div>
+          )}
+        </div>
       ) : (
         <div>
-          <textarea
-            value={content}
-            onChange={(e) => setContent(e.target.value)}
-            placeholder="Estructura repetitiva + pseudocódigo (PSeInt) + justificación de negocio…"
-          />
+          {match.language === 'PYTHON' ? (
+            <CodeMirror
+              value={content}
+              height="240px"
+              extensions={[python()]}
+              onChange={(value) => setContent(value)}
+              placeholder="n = int(input())&#10;print(n * 2)"
+            />
+          ) : (
+            <textarea
+              value={content}
+              onChange={(e) => setContent(e.target.value)}
+              placeholder="Estructura repetitiva + pseudocódigo (PSeInt) + justificación de negocio…"
+            />
+          )}
           <div className="hint">El profesor evaluará esto. Sé claro y completo.</div>
+
+          {match.language === 'PYTHON' && (
+            <>
+              <button className="add-member-btn" disabled={testing} onClick={handleTestCode}>
+                {testing ? 'Probando…' : 'Probar código'}
+              </button>
+              {testResult && (
+                <div className="test-result-panel card">
+                  {testResult.status === 'ERROR' ? (
+                    <p>No se pudo ejecutar el código — intenta de nuevo.</p>
+                  ) : (
+                    testResult.testResults.map((t, i) => (
+                      <div key={i} className={`test-result-row ${t.passed ? 'passed' : 'failed'}`}>
+                        <span>{t.passed ? '✓' : '✕'} Caso {i + 1}</span>
+                        {!t.passed && (
+                          <span className="test-result-detail">
+                            Esperado: <code>{t.expectedOutput}</code> — Obtuviste: <code>{t.actualOutput}</code>
+                          </span>
+                        )}
+                      </div>
+                    ))
+                  )}
+                </div>
+              )}
+            </>
+          )}
+
           <button className="submit-btn" disabled={submitting} onClick={handleSubmit}>
             Enviar solución
           </button>

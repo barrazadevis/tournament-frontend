@@ -15,6 +15,26 @@ export interface Team {
 
 export type MatchStatus = 'PENDING' | 'ACTIVE' | 'AWAITING_JUDGMENT' | 'RESOLVED';
 export type Verdict = 'PENDING' | 'APPROVED' | 'REJECTED';
+export type TournamentLanguage = 'PSEINT' | 'PYTHON';
+
+export interface TestCaseExecutionResult {
+  input: string;
+  expectedOutput: string;
+  actualOutput: string;
+  passed: boolean;
+}
+
+export interface ExecutionResult {
+  status: 'RAN' | 'ERROR';
+  testResults: TestCaseExecutionResult[];
+  stderr: string | null;
+}
+
+export interface ExecutionSummary {
+  status: 'RAN' | 'ERROR';
+  testsPassed: number;
+  testsTotal: number;
+}
 
 export interface Submission {
   id?: string;
@@ -22,6 +42,10 @@ export interface Submission {
   content: string;
   submittedAt: string;
   verdict: Verdict;
+  /** Detalle completo — solo presente en la vista del profesor (GET /tournaments/:id). */
+  executionResult?: ExecutionResult | null;
+  /** Resumen sin detalle — solo presente en la vista del equipo (GET /matches/:matchId), para no filtrarle al rival su stdout. */
+  executionSummary?: ExecutionSummary | null;
 }
 
 export interface BusinessCase {
@@ -31,6 +55,7 @@ export interface BusinessCase {
 
 export interface Match {
   id: string;
+  language: TournamentLanguage;
   roundName: string;
   teamAId: string;
   teamBId: string;
@@ -57,6 +82,7 @@ export interface Tournament {
   id: string;
   name: string;
   status: TournamentStatus;
+  language: TournamentLanguage;
   rounds: Round[];
 }
 
