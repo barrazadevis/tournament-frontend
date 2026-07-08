@@ -266,7 +266,91 @@ estilo PSeInt y las pestañas del juez quedan en vivo con ese deploy.
 
 ---
 
-## 6. Archivos modificados (resumen rápido)
+## 6. Resaltado de palabras clave de PSeInt (vista del juez)
+
+Pedido del usuario tras ver el editor liviano: "quiero ver el resaltado
+de palabras clave como sería" — antes de tocar código real, se armó un
+**Artifact** (preview HTML aparte, no conectado a la app) que reproducía
+el mismo look del `.pseudo-editor` con un interruptor "sin resaltar / con
+resaltado" para decidir si valía la pena, sin comprometerse todavía a
+CodeMirror ni a ninguna implementación. Con el visto bueno sobre esa
+maqueta, se implementó de verdad.
+
+### Decisión: tokenizador propio, no CodeMirror
+
+Se mantuvo la línea del punto 4 (evitar dependencias nuevas). El
+contenido que se resalta puede ser la solución que escribió un equipo,
+así que la restricción de `CLAUDE.md` de nunca usar
+`dangerouslySetInnerHTML` sobre texto de submissions aplicaba directo
+acá — importante porque la forma obvia de "pintar" texto (armar un
+string de HTML con `<span>` y volcarlo con `dangerouslySetInnerHTML`)
+es exactamente el patrón que ese archivo prohíbe, y por buena razón: sin
+escapar bien el contenido, cualquier `<`/`>`/`"` que un equipo escriba en
+su solución podría inyectar HTML/JS arbitrario en la pantalla del juez.
+
+### `src/utils/pseudocodeHighlight.tsx` (nuevo)
+
+`highlightPseudocodeLine(line: string)` tokeniza con una regex
+(cadenas / números / palabras, en ese orden) y devuelve un **arreglo de
+nodos React** — texto plano intercalado con `<span className="tok-...">`
+para las palabras que matchean el set de palabras reservadas
+(`Proceso`, `Si`, `Entonces`, `Mientras`...) o de tipos (`Real`,
+`Entero`...). Nunca arma un string de HTML: cada fragmento pasa por JSX,
+así que React lo escapa exactamente igual que cualquier otro texto que
+ya se renderiza hoy — el mismo comportamiento por defecto que
+`CLAUDE.md` ya documentaba para el resto de la app, extendido a este
+caso nuevo.
+
+### `PseudoEditor.tsx`: por qué un `<div>` por línea en modo `readOnly`
+
+Un `<textarea>` solo puede mostrar texto plano — no puede contener
+`<span>` de colores dentro de su propio valor. Por eso el resaltado
+**solo aplica cuando `readOnly` es `true`** (la vista del juez): ahí el
+componente cambia de `<textarea readOnly>` a un `<div>` con un hijo por
+línea, cada uno renderizando `highlightPseudocodeLine(línea)`. La vista
+donde el equipo escribe (`readOnly=false`) sigue siendo el `<textarea>`
+de siempre, sin resaltado — hacerlo ahí en vivo requeriría la técnica de
+"textarea transparente sobre un `<pre>` resaltado detrás", sincronizando
+scroll, caret e IME, que es bastante más riesgosa y no se implementó
+(ver pendientes).
+
+Un detalle no obvio: una línea vacía (`''`) como único hijo de un
+`<div>` puede colapsar a altura cero en algunos navegadores porque no
+hay contenido inline que genere una caja de línea. Se resolvió
+renderizando un espacio (`' '`) en vez de un arreglo vacío cuando la
+línea está vacía — así el gutter de números sigue alineado línea por
+línea aunque la solución tenga saltos de línea en blanco.
+
+### Estilos (`src/index.css`)
+
+Cuatro tokens de color nuevos en `:root`: `--tok-keyword` (reusa
+`--gold-strong`, ya existía), `--tok-type` (celeste), `--tok-string`
+(verde), `--tok-number` (naranja) — paleta acotada a propósito, sin
+colorear identificadores/operadores para no verse "arcoíris". Las reglas
+de scrollbar que antes apuntaban solo a `.pseudo-editor-textarea` se
+extendieron para cubrir también `.pseudo-editor-code` (el nuevo
+contenedor de solo lectura), reusando los mismos selectores en vez de
+duplicarlos.
+
+### Verificación
+
+Playwright headless contra la misma base de datos temporal del punto 4:
+una solución con palabras clave, tipos, cadenas, números **y una línea
+en blanco en medio** (para probar justo el caso del gutter descrito
+arriba) enviada a un match, revisada desde el panel del juez. Se
+confirmó por separado que la vista de escritura del equipo sigue en
+texto plano, sin cambios. `npx tsc -b` sin errores. Sin errores de
+consola.
+
+### Segundo merge a producción
+
+Mismo procedimiento del punto 5 (`git checkout main && git merge
+origin/develop --ff-only && git push origin main`), otro fast-forward
+limpio.
+
+---
+
+## 7. Archivos modificados (resumen rápido)
 
 **`tournament-domain-backend`:**
 - `src/infrastructure/http/main.ts`
@@ -281,8 +365,9 @@ estilo PSeInt y las pestañas del juez quedan en vivo con ese deploy.
 - `src/pages/QualifyingTeamPage.tsx`
 - `src/pages/JudgePage.tsx`
 - `src/components/PseudoEditor.tsx` (nuevo)
+- `src/utils/pseudocodeHighlight.tsx` (nuevo)
 
-## 7. Pendientes / a tener en cuenta
+## 8. Pendientes / a tener en cuenta
 
 - Repetir la verificación end-to-end (WebSocket, countdown en vivo,
   persistencia tras restart) el mismo día del torneo real, no solo al
@@ -291,7 +376,10 @@ estilo PSeInt y las pestañas del juez quedan en vivo con ese deploy.
   `DB_PATH` apunta bien antes de dar por sentada la persistencia.
 - Recordar generar los links del torneo siempre desde el dominio de
   producción de Vercel, nunca desde un preview.
-- El editor PSeInt es liviano a propósito (sin resaltado de sintaxis).
-  Si más adelante se quiere resaltado de palabras clave, ese es el punto
-  donde entraría CodeMirror — evaluar de nuevo el trade-off dependencia
-  vs. beneficio en ese momento, no antes.
+- El resaltado de palabras clave solo aplica a la vista de solo lectura
+  del juez. Si más adelante se quiere resaltado en vivo mientras el
+  equipo escribe, hace falta la técnica de overlay (textarea transparente
+  sobre un `<pre>` resaltado, ambos sincronizados en scroll) — evaluar
+  ese trade-off (complejidad/riesgo vs. beneficio) en ese momento, no
+  antes. CodeMirror sigue siendo la alternativa si en algún punto no
+  alcanza con el tokenizador propio.
