@@ -7,6 +7,7 @@ import { CountdownRing } from '../components/CountdownRing';
 import { CountdownBar } from '../components/CountdownBar';
 import { BracketView } from '../components/BracketView';
 import { ChampionCelebration } from '../components/ChampionCelebration';
+import { Modal } from '../components/Modal';
 import { matchStatusBadge } from '../utils/matchStatus';
 import type { Match, Tournament, QualifyingRound, Submission, TimerTickEvent, TournamentFinishedEvent } from '../api/types';
 
@@ -169,6 +170,7 @@ export function ViewerPage() {
   const [qualifying, setQualifying] = useState<QualifyingRound | null>(null);
   const [remainingByMatch, setRemainingByMatch] = useState<Record<string, number>>({});
   const [championId, setChampionId] = useState<string | null>(null);
+  const [celebrationOpen, setCelebrationOpen] = useState(false);
   const [view, setView] = useState<'match' | 'bracket' | 'participants'>('match');
   const [focusedMatchId, setFocusedMatchId] = useState<string | null>(null);
   const socketRef = useRef<ReturnType<typeof connectNamespace> | null>(null);
@@ -207,6 +209,7 @@ export function ViewerPage() {
     socket.on('round_advanced', refresh);
     socket.on('tournament_finished', (event: TournamentFinishedEvent) => {
       setChampionId(event.championTeamId);
+      setCelebrationOpen(true);
       refresh();
     });
 
@@ -226,19 +229,22 @@ export function ViewerPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tournamentId]);
 
+  // Si se abre/recarga el proyector con el torneo ya terminado, mostramos la
+  // celebración una vez igual que al recibir el evento en vivo.
+  useEffect(() => {
+    if (tournament?.status === 'FINISHED') setCelebrationOpen(true);
+  }, [tournament?.status]);
+
+  // La celebración se cierra sola para no bloquear el proyector — el
+  // profesor necesita poder seguir viendo el bracket/participantes después.
+  useEffect(() => {
+    if (!celebrationOpen) return;
+    const timeout = setTimeout(() => setCelebrationOpen(false), 6000);
+    return () => clearTimeout(timeout);
+  }, [celebrationOpen]);
+
   if (!tournament) {
     return <div className="waiting-screen">Cargando torneo…</div>;
-  }
-
-  if (tournament.status === 'FINISHED') {
-    const finalRound = tournament.rounds.at(-1);
-    const champion = championId ?? finalRound?.matches[0]?.winnerId ?? null;
-    return (
-      <ChampionCelebration
-        championName={champion ? teamName(champion) : '—'}
-        championLogo={champion ? teamLogo(champion) : undefined}
-      />
-    );
   }
 
   if (tournament.rounds.length === 0) {
@@ -252,6 +258,7 @@ export function ViewerPage() {
   const isHero = latestRound.matches.length === 1;
   const currentRoundNumber = tournament.rounds.length;
   const totalRounds = currentRoundNumber + Math.log2(latestRound.matches.length);
+  const champion = championId ?? latestRound.matches[0]?.winnerId ?? null;
 
   const remainingFor = (matchId: string, timerStartedAt: string | null, duration: number) => {
     if (remainingByMatch[matchId] !== undefined) return remainingByMatch[matchId];
@@ -262,6 +269,14 @@ export function ViewerPage() {
 
   return (
     <div className="viewer-screen">
+      {celebrationOpen && tournament.status === 'FINISHED' && (
+        <Modal onClose={() => setCelebrationOpen(false)}>
+          <ChampionCelebration
+            championName={champion ? teamName(champion) : '—'}
+            championLogo={champion ? teamLogo(champion) : undefined}
+          />
+        </Modal>
+      )}
       <div className="viewer-top-bar">
         <div className="tournament-title">{tournament.name}</div>
         <div className="viewer-tabs">
