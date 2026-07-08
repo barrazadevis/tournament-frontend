@@ -174,7 +174,99 @@ de prueba corriendo.
 
 ---
 
-## 4. Archivos modificados (resumen rápido)
+## 4. Editor de pseudocódigo estilo PSeInt (`PseudoEditor`)
+
+Pedido explícito del usuario: que el `<textarea>` de solución se sienta
+como un editor de código real, con la referencia visual de
+[pseint-web.app](https://www.pseint-web.app/).
+
+Se evaluaron dos alcances con el usuario antes de tocar código:
+- **Completo**: agregar CodeMirror con resaltado de sintaxis de PSeInt
+  (`Proceso`, `Si`, `Mientras`, `Escribir`...). Más fiel al editor real,
+  pero dependencia nueva y más superficie de código.
+- **Liviano** (elegido): sin librerías nuevas, sobre el `<textarea>` que
+  ya existía.
+
+### Componente nuevo: `src/components/PseudoEditor.tsx`
+
+Envuelve un `<textarea>` real (controlado, sigue siendo el mismo que
+antes) con:
+- Barra de título con puntos tipo ventana (decorativos) y nombre de
+  archivo configurable (`fileName`, default `solucion.psc`).
+- Gutter de números de línea: un `<div>` aparte que se sincroniza con el
+  `<textarea>` copiando `scrollTop` en el handler `onScroll`. Como el
+  editor sigue usando `wrap="off"` + `white-space: pre` (ver sesión
+  anterior), cada línea lógica (`value.split('\n')`) ocupa exactamente
+  una línea visual — no hay riesgo de desincronización por soft-wrap,
+  que es el problema clásico de este patrón.
+- Props `readOnly` y `compact`: el mismo componente se reusa tal cual
+  para la vista de escritura del equipo (`TeamMatchPage`,
+  `QualifyingTeamPage`) y para la vista de solo-lectura del juez (ver
+  sección siguiente) — sin duplicar el gutter ni el scroll-sync.
+
+### Estilos (`src/index.css`)
+
+Bloque `.pseudo-editor*` reemplazó las reglas viejas de
+`.match-editor textarea`. Fondo `var(--navy)` y texto `var(--on-navy)`
+(reutiliza tokens de marca existentes, sin colores nuevos salvo los
+puntos decorativos rojo/amarillo/verde de la barra de título). El anillo
+de foco se puso en `.pseudo-editor:focus-within` (no en el `<textarea>`
+directamente) porque el contenedor tiene `overflow: hidden` por las
+esquinas redondeadas, y un `outline` en un descendiente cuyo tamaño toca
+el borde del contenedor se recorta — el `outline` del contenedor mismo
+no sufre ese problema. `--editor-line-height` se definió directamente en
+`.pseudo-editor` (antes vivía en `.match-editor`) para que el componente
+sea autocontenido y se vea igual en cualquier página que lo use.
+
+### Vista del juez: pestañas cuando hay dos envíos
+
+En un match compiten dos equipos y ambos pueden enviar solución al mismo
+tiempo. Antes se listaban las dos soluciones apiladas en texto plano.
+Ahora (`JudgePage.tsx`):
+- Cada solución pendiente se muestra con `PseudoEditor` en modo
+  `readOnly compact` (más bajo que el del equipo — es para revisar, no
+  para escribir — con scroll si el pseudocódigo es largo).
+- Nuevo componente `SubmissionsPanel`: si hay más de un envío pendiente
+  en el match, agrega una fila de pestañas (una por equipo, la primera
+  en llegar marcada "· primero", reusando el patrón visual de
+  `.entry-tab` que ya existía para otras pestañas del panel del juez).
+  Aprobar/Rechazar actúan sobre el envío de la pestaña activa. Con un
+  solo envío pendiente no se muestran pestañas — va directo al editor.
+- La ronda clasificatoria (`QualifyingPanel`) no necesitaba pestañas: ahí
+  cada equipo ya tiene su propia fila, así que solo se le cambió el
+  `<div>` de texto plano por el mismo `PseudoEditor readOnly compact`.
+
+### Verificación
+
+Se probó con Playwright headless contra un backend real apuntando a una
+**base de datos SQLite temporal** (`DB_PATH` en el scratchpad, no
+`tournament.db`) para no tocar los datos de desarrollo reales: torneo de
+prueba creado vía API, dos equipos enviando solución al mismo match,
+cambio de pestaña en el panel del juez, y rechazo de un envío para
+confirmar que el panel colapsa limpio a la vista sin pestañas cuando
+queda solo uno. Sin errores de consola. Desktop (1440px) y mobile
+(375px) revisados para la vista del equipo.
+
+---
+
+## 5. Merge a producción
+
+Con el visto bueno del usuario sobre el resultado, se hizo:
+
+```
+git checkout main
+git merge origin/develop --ff-only
+git push origin main
+```
+
+Fue fast-forward limpio (`main` no tenía commits propios que `develop`
+no tuviera). Como `main` es la rama que Vercel despliega a producción
+(ver sección 2.1), este push dispara un build automático — el editor
+estilo PSeInt y las pestañas del juez quedan en vivo con ese deploy.
+
+---
+
+## 6. Archivos modificados (resumen rápido)
 
 **`tournament-domain-backend`:**
 - `src/infrastructure/http/main.ts`
@@ -187,8 +279,10 @@ de prueba corriendo.
 - `src/index.css`
 - `src/pages/TeamMatchPage.tsx`
 - `src/pages/QualifyingTeamPage.tsx`
+- `src/pages/JudgePage.tsx`
+- `src/components/PseudoEditor.tsx` (nuevo)
 
-## 5. Pendientes / a tener en cuenta
+## 7. Pendientes / a tener en cuenta
 
 - Repetir la verificación end-to-end (WebSocket, countdown en vivo,
   persistencia tras restart) el mismo día del torneo real, no solo al
@@ -197,3 +291,7 @@ de prueba corriendo.
   `DB_PATH` apunta bien antes de dar por sentada la persistencia.
 - Recordar generar los links del torneo siempre desde el dominio de
   producción de Vercel, nunca desde un preview.
+- El editor PSeInt es liviano a propósito (sin resaltado de sintaxis).
+  Si más adelante se quiere resaltado de palabras clave, ese es el punto
+  donde entraría CodeMirror — evaluar de nuevo el trade-off dependencia
+  vs. beneficio en ese momento, no antes.
