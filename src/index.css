@@ -26,6 +26,13 @@
   --success-rgb: 31, 157, 85;
   --danger-rgb: 214, 69, 69;
 
+  /* Resaltado de sintaxis de pseudocódigo (solo en el editor de solo
+     lectura del juez, ver .pseudo-editor-code) */
+  --tok-keyword: var(--gold-strong);
+  --tok-type: #5eead4;
+  --tok-string: #a3d977;
+  --tok-number: #f4a261;
+
   --font-display: 'JetBrains Mono', ui-monospace, monospace;
   --font-body: 'Inter', system-ui, sans-serif;
 
@@ -1334,7 +1341,8 @@ textarea {
   color: var(--on-navy-dim);
 }
 
-.pseudo-editor-textarea {
+.pseudo-editor-textarea,
+.pseudo-editor-code {
   flex: 1;
   min-width: 0;
   padding: 1rem;
@@ -1345,11 +1353,38 @@ textarea {
   font-family: var(--font-display);
   font-size: 0.95rem;
   line-height: var(--editor-line-height);
-  resize: none;
   overflow: auto;
   white-space: pre;
   scrollbar-width: thin;
   scrollbar-color: var(--navy-soft) transparent;
+}
+
+.pseudo-editor-textarea {
+  resize: none;
+}
+
+/* .pseudo-editor-code: vista de solo lectura del juez, con resaltado de
+   sintaxis — un <div> por línea en vez de un <textarea>, porque un
+   textarea no puede pintar <span> de colores dentro de su propio texto. */
+.pseudo-editor-code {
+  cursor: text;
+}
+
+.tok-kw {
+  color: var(--tok-keyword);
+  font-weight: 600;
+}
+
+.tok-ty {
+  color: var(--tok-type);
+}
+
+.tok-str {
+  color: var(--tok-string);
+}
+
+.tok-num {
+  color: var(--tok-number);
 }
 
 .pseudo-editor-textarea:focus-visible {
@@ -1365,26 +1400,31 @@ textarea {
   color: var(--on-navy-dim);
 }
 
-.pseudo-editor-textarea::-webkit-scrollbar {
+.pseudo-editor-textarea::-webkit-scrollbar,
+.pseudo-editor-code::-webkit-scrollbar {
   width: 10px;
   height: 10px;
 }
 
-.pseudo-editor-textarea::-webkit-scrollbar-track {
+.pseudo-editor-textarea::-webkit-scrollbar-track,
+.pseudo-editor-code::-webkit-scrollbar-track {
   background: transparent;
 }
 
-.pseudo-editor-textarea::-webkit-scrollbar-thumb {
+.pseudo-editor-textarea::-webkit-scrollbar-thumb,
+.pseudo-editor-code::-webkit-scrollbar-thumb {
   background: var(--navy-soft);
   border-radius: var(--radius-sm);
   border: 2px solid var(--navy);
 }
 
-.pseudo-editor-textarea::-webkit-scrollbar-thumb:hover {
+.pseudo-editor-textarea::-webkit-scrollbar-thumb:hover,
+.pseudo-editor-code::-webkit-scrollbar-thumb:hover {
   background: var(--gold);
 }
 
-.pseudo-editor-textarea::-webkit-scrollbar-corner {
+.pseudo-editor-textarea::-webkit-scrollbar-corner,
+.pseudo-editor-code::-webkit-scrollbar-corner {
   background: transparent;
 }
 

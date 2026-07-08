@@ -1,4 +1,5 @@
 import { useRef } from 'react';
+import { highlightPseudocodeLine } from '../utils/pseudocodeHighlight';
 
 interface PseudoEditorProps {
   value: string;
@@ -18,9 +19,9 @@ export function PseudoEditor({
   compact = false,
 }: PseudoEditorProps) {
   const gutterRef = useRef<HTMLDivElement>(null);
-  const lineCount = value.length === 0 ? 1 : value.split('\n').length;
+  const lines = value.length === 0 ? [''] : value.split('\n');
 
-  const syncGutterScroll = (e: React.UIEvent<HTMLTextAreaElement>) => {
+  const syncGutterScroll = (e: React.UIEvent<HTMLElement>) => {
     if (gutterRef.current) gutterRef.current.scrollTop = e.currentTarget.scrollTop;
   };
 
@@ -36,22 +37,31 @@ export function PseudoEditor({
       </div>
       <div className="pseudo-editor-body">
         <div className="pseudo-editor-gutter" ref={gutterRef} aria-hidden="true">
-          {Array.from({ length: lineCount }, (_, i) => (
+          {lines.map((_, i) => (
             <div key={i} className="pseudo-editor-line-number">
               {i + 1}
             </div>
           ))}
         </div>
-        <textarea
-          className="pseudo-editor-textarea"
-          value={value}
-          onChange={readOnly ? undefined : (e) => onChange?.(e.target.value)}
-          onScroll={syncGutterScroll}
-          placeholder={placeholder}
-          spellCheck={false}
-          wrap="off"
-          readOnly={readOnly}
-        />
+        {readOnly ? (
+          <div className="pseudo-editor-code" onScroll={syncGutterScroll}>
+            {lines.map((line, i) => (
+              <div key={i} className="pseudo-editor-line">
+                {line.length === 0 ? ' ' : highlightPseudocodeLine(line)}
+              </div>
+            ))}
+          </div>
+        ) : (
+          <textarea
+            className="pseudo-editor-textarea"
+            value={value}
+            onChange={(e) => onChange?.(e.target.value)}
+            onScroll={syncGutterScroll}
+            placeholder={placeholder}
+            spellCheck={false}
+            wrap="off"
+          />
+        )}
       </div>
     </div>
   );
