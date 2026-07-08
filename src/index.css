@@ -1123,12 +1123,46 @@ input {
 
 /* ===== Team (match + qualifying) ===== */
 .team-screen {
-  max-width: 560px;
+  max-width: 1100px;
   margin: 0 auto;
   padding: 1.25rem;
   display: flex;
   flex-direction: column;
   gap: 1.25rem;
+}
+
+/* Layout de escritura: info del caso a la izquierda (angosta, para lectura
+   cómoda), editor de la solución a la derecha (ancho, porque el texto puede
+   ser largo). Se apila en pantallas angostas. */
+.match-layout {
+  display: grid;
+  grid-template-columns: minmax(240px, 380px) 1fr;
+  gap: 1.5rem;
+  align-items: start;
+}
+
+.match-info {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  position: sticky;
+  top: 1.25rem;
+}
+
+.match-editor {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+@media (max-width: 760px) {
+  .match-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .match-info {
+    position: static;
+  }
 }
 
 .top-bar {
@@ -1179,6 +1213,7 @@ input {
   background: rgba(var(--gold-rgb), 0.1);
   border-radius: var(--radius-sm);
   padding: 0.75rem 1rem;
+  max-width: 65ch;
 }
 
 textarea {
@@ -1190,10 +1225,59 @@ textarea {
   resize: vertical;
 }
 
+.match-editor textarea {
+  flex: 1;
+  min-height: 560px;
+  font-family: var(--font-display);
+  font-size: 0.95rem;
+  line-height: 1.6;
+  resize: none;
+  overflow: auto;
+  white-space: pre;
+  scrollbar-width: thin;
+  scrollbar-color: var(--navy-soft) var(--track);
+}
+
+.match-editor textarea::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+.match-editor textarea::-webkit-scrollbar-track {
+  background: var(--track);
+  border-radius: var(--radius-sm);
+}
+
+.match-editor textarea::-webkit-scrollbar-thumb {
+  background: var(--navy-soft);
+  border-radius: var(--radius-sm);
+  border: 2px solid var(--track);
+}
+
+.match-editor textarea::-webkit-scrollbar-thumb:hover {
+  background: var(--navy);
+}
+
+.match-editor textarea::-webkit-scrollbar-corner {
+  background: var(--track);
+}
+
+.editor-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-top: 0.6rem;
+}
+
 .hint {
   font-size: 0.85rem;
   color: var(--navy-soft);
   margin-top: 0.4rem;
+}
+
+.editor-footer .hint {
+  margin-top: 0;
 }
 
 .submit-btn {
@@ -1203,6 +1287,24 @@ textarea {
   background: var(--gold);
   color: var(--navy);
   margin-top: 0.75rem;
+}
+
+.editor-footer .submit-btn {
+  width: auto;
+  min-width: 220px;
+  margin-top: 0;
+  flex-shrink: 0;
+}
+
+@media (max-width: 520px) {
+  .editor-footer {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .editor-footer .submit-btn {
+    width: 100%;
+  }
 }
 
 .submit-btn:disabled {

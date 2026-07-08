@@ -82,48 +82,57 @@ export function QualifyingTeamPage() {
   return (
     <div className="team-screen">
       <AppHeader />
-      <div className="eyebrow">
-        <span>
-          <strong>{teamName(teamId)}</strong> — Ronda clasificatoria
-        </span>
-        <span>Avanzan {round.targetQualifierCount} equipos</span>
-      </div>
+      <div className="match-layout">
+        <div className="match-info">
+          <div className="eyebrow">
+            <span>
+              <strong>{teamName(teamId)}</strong> — Ronda clasificatoria
+            </span>
+            <span>Avanzan {round.targetQualifierCount} equipos</span>
+          </div>
 
-      <div className="rule-note">
-        Avanzan los equipos más rápidos con respuesta <strong>correcta</strong>. La velocidad no
-        cuenta si el profesor rechaza tu solución.
-      </div>
+          <div className="rule-note">
+            Avanzan los equipos más rápidos con respuesta <strong>correcta</strong>. La velocidad no
+            cuenta si el profesor rechaza tu solución.
+          </div>
 
-      <div className="case-card card">
-        <h2>{round.businessCase.title}</h2>
-        <p>{round.businessCase.description}</p>
-      </div>
-
-      {!ownSubmission && (
-        <div>
-          <textarea
-            value={content}
-            onChange={(e) => setContent(e.target.value)}
-            placeholder="Estructura repetitiva + pseudocódigo (PSeInt) + justificación de negocio…"
-          />
-          <div className="hint">Solo tienes un intento. Revisa antes de enviar.</div>
-          <button className="submit-btn" disabled={submitting} onClick={handleSubmit}>
-            Enviar solución
-          </button>
+          <div className="case-card card">
+            <h2>{round.businessCase.title}</h2>
+            <p>{round.businessCase.description}</p>
+          </div>
         </div>
-      )}
 
-      {ownSubmission?.verdict === 'PENDING' && (
-        <div className="status-banner waiting">Solución enviada. Esperando el veredicto del profesor…</div>
-      )}
-      {ownSubmission?.verdict === 'REJECTED' && (
-        <div className="status-banner rejected">Tu solución fue rechazada. No avanzas a la siguiente fase.</div>
-      )}
-      {ownSubmission?.verdict === 'APPROVED' && (
-        <div className="status-banner won">
-          Solución aprobada. Esperando a que el profesor cierre la clasificatoria para saber si avanzas.
+        <div className="match-editor">
+          {!ownSubmission && (
+            <>
+              <textarea
+                value={content}
+                onChange={(e) => setContent(e.target.value)}
+                placeholder="Estructura repetitiva + pseudocódigo (PSeInt)"
+                wrap="off"
+              />
+              <div className="editor-footer">
+                <div className="hint">Solo tienes un intento. Revisa antes de enviar. · {content.length} caracteres</div>
+                <button className="submit-btn" disabled={submitting} onClick={handleSubmit}>
+                  Enviar solución
+                </button>
+              </div>
+            </>
+          )}
+
+          {ownSubmission?.verdict === 'PENDING' && (
+            <div className="status-banner waiting">Solución enviada. Esperando el veredicto del profesor…</div>
+          )}
+          {ownSubmission?.verdict === 'REJECTED' && (
+            <div className="status-banner rejected">Tu solución fue rechazada. No avanzas a la siguiente fase.</div>
+          )}
+          {ownSubmission?.verdict === 'APPROVED' && (
+            <div className="status-banner won">
+              Solución aprobada. Esperando a que el profesor cierre la clasificatoria para saber si avanzas.
+            </div>
+          )}
         </div>
-      )}
+      </div>
 
       <button className="switch-team" onClick={handleSwitchTeam}>
         ¿No eres este equipo? Cambiar

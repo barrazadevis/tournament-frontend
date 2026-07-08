@@ -109,26 +109,37 @@ export function TeamMatchPage() {
         <div className="timer-chip mono">{remaining !== null ? formatSeconds(remaining) : '--:--'}</div>
       </div>
 
-      <div className="case-card card">
-        <h2>{match.businessCase.title}</h2>
-        <p>{match.businessCase.description}</p>
-      </div>
-
-      {banner ? (
-        <div className={`status-banner ${banner.kind}`}>{banner.message}</div>
-      ) : (
-        <div>
-          <textarea
-            value={content}
-            onChange={(e) => setContent(e.target.value)}
-            placeholder="Estructura repetitiva + pseudocódigo (PSeInt) + justificación de negocio…"
-          />
-          <div className="hint">El profesor evaluará esto. Sé claro y completo.</div>
-          <button className="submit-btn" disabled={submitting} onClick={handleSubmit}>
-            Enviar solución
-          </button>
+      <div className="match-layout">
+        <div className="match-info">
+          <div className="case-card card">
+            <h2>{match.businessCase.title}</h2>
+            <p>{match.businessCase.description}</p>
+          </div>
         </div>
-      )}
+
+        <div className="match-editor">
+          {banner ? (
+            <div className={`status-banner ${banner.kind}`}>{banner.message}</div>
+          ) : (
+            <>
+              <textarea
+                value={content}
+                onChange={(e) => setContent(e.target.value)}
+                placeholder="Estructura repetitiva + pseudocódigo (PSeInt)"
+                wrap="off"
+              />
+              <div className="editor-footer">
+                <div className="hint">
+                  El profesor evaluará esto. Sé claro y completo. · {content.length} caracteres
+                </div>
+                <button className="submit-btn" disabled={submitting} onClick={handleSubmit}>
+                  Enviar solución
+                </button>
+              </div>
+            </>
+          )}
+        </div>
+      </div>
 
       <button className="switch-team" onClick={handleSwitchTeam}>
         ¿No eres este equipo? Cambiar
