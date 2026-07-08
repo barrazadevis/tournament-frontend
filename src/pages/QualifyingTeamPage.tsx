@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { apiGet, apiPost, ApiError } from '../api/client';
 import { AppHeader } from '../components/AppHeader';
+import { PseudoEditor } from '../components/PseudoEditor';
 import { useTeams } from '../hooks/useTeams';
 import { teamStorageKey } from '../utils/teamStorage';
 import { useModal } from '../components/ModalProvider';
@@ -105,11 +106,10 @@ export function QualifyingTeamPage() {
         <div className="match-editor">
           {!ownSubmission && (
             <>
-              <textarea
+              <PseudoEditor
                 value={content}
-                onChange={(e) => setContent(e.target.value)}
+                onChange={setContent}
                 placeholder="Estructura repetitiva + pseudocódigo (PSeInt)"
-                wrap="off"
               />
               <div className="editor-footer">
                 <div className="hint">Solo tienes un intento. Revisa antes de enviar. · {content.length} caracteres</div>

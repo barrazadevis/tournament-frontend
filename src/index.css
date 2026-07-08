@@ -952,13 +952,35 @@ input {
   padding: 0.5rem 1rem;
 }
 
-.submission-preview {
+.submission-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.submission-tabs {
+  display: flex;
+  gap: 0.4rem;
+}
+
+.submission-tab {
   background: var(--bg-subtle);
-  border-radius: var(--radius-sm);
-  padding: 0.85rem;
-  font-size: 0.9rem;
   color: var(--navy-soft);
-  white-space: pre-wrap;
+  border: 1px solid var(--border);
+  padding: 0.5rem 0.9rem;
+  font-size: 0.85rem;
+  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+}
+
+.submission-tab.active {
+  background: var(--navy);
+  color: var(--on-navy);
+  border-color: var(--navy);
+}
+
+.submission-meta {
+  font-size: 0.85rem;
+  color: var(--navy-soft);
 }
 
 .timer-label {
@@ -1225,41 +1247,145 @@ textarea {
   resize: vertical;
 }
 
-.match-editor textarea {
+/* Editor de pseudocódigo estilo PSeInt: barra de título + gutter de
+   números de línea + textarea real. El gutter es un div separado que se
+   sincroniza por scrollTop con el textarea (ver PseudoEditor.tsx); como el
+   editor usa wrap="off" + white-space: pre, cada línea lógica ocupa
+   exactamente una línea visual, así que no hay desincronización por
+   soft-wrap. */
+.pseudo-editor {
+  --editor-line-height: 1.6;
   flex: 1;
+  display: flex;
+  flex-direction: column;
   min-height: 560px;
+  background: var(--navy);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  box-shadow: var(--shadow);
+}
+
+.pseudo-editor--compact {
+  flex: none;
+  min-height: 180px;
+  max-height: 360px;
+}
+
+.pseudo-editor-titlebar {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.6rem 0.9rem;
+  background: rgba(0, 0, 0, 0.2);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  flex-shrink: 0;
+}
+
+.pseudo-editor-dots {
+  display: flex;
+  gap: 0.4rem;
+}
+
+.pseudo-editor-dot {
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+}
+
+.pseudo-editor-dot.dot-red {
+  background: #ff5f56;
+}
+
+.pseudo-editor-dot.dot-yellow {
+  background: #ffbd2e;
+}
+
+.pseudo-editor-dot.dot-green {
+  background: #27c93f;
+}
+
+.pseudo-editor-filename {
+  font-family: var(--font-display);
+  font-size: 0.8rem;
+  color: var(--on-navy-dim);
+}
+
+.pseudo-editor-body {
+  flex: 1;
+  display: flex;
+  min-height: 0;
+}
+
+.pseudo-editor-gutter {
+  flex-shrink: 0;
+  padding: 1rem 0;
+  overflow: hidden;
+  background: rgba(0, 0, 0, 0.15);
+  border-right: 1px solid rgba(255, 255, 255, 0.08);
+  text-align: right;
+  user-select: none;
+}
+
+.pseudo-editor-line-number {
+  padding: 0 0.75rem;
   font-family: var(--font-display);
   font-size: 0.95rem;
-  line-height: 1.6;
+  line-height: var(--editor-line-height);
+  color: var(--on-navy-dim);
+}
+
+.pseudo-editor-textarea {
+  flex: 1;
+  min-width: 0;
+  padding: 1rem;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  color: var(--on-navy);
+  font-family: var(--font-display);
+  font-size: 0.95rem;
+  line-height: var(--editor-line-height);
   resize: none;
   overflow: auto;
   white-space: pre;
   scrollbar-width: thin;
-  scrollbar-color: var(--navy-soft) var(--track);
+  scrollbar-color: var(--navy-soft) transparent;
 }
 
-.match-editor textarea::-webkit-scrollbar {
+.pseudo-editor-textarea:focus-visible {
+  outline: none;
+}
+
+.pseudo-editor:focus-within {
+  outline: 2px solid var(--gold);
+  outline-offset: 2px;
+}
+
+.pseudo-editor-textarea::placeholder {
+  color: var(--on-navy-dim);
+}
+
+.pseudo-editor-textarea::-webkit-scrollbar {
   width: 10px;
   height: 10px;
 }
 
-.match-editor textarea::-webkit-scrollbar-track {
-  background: var(--track);
-  border-radius: var(--radius-sm);
+.pseudo-editor-textarea::-webkit-scrollbar-track {
+  background: transparent;
 }
 
-.match-editor textarea::-webkit-scrollbar-thumb {
+.pseudo-editor-textarea::-webkit-scrollbar-thumb {
   background: var(--navy-soft);
   border-radius: var(--radius-sm);
-  border: 2px solid var(--track);
+  border: 2px solid var(--navy);
 }
 
-.match-editor textarea::-webkit-scrollbar-thumb:hover {
-  background: var(--navy);
+.pseudo-editor-textarea::-webkit-scrollbar-thumb:hover {
+  background: var(--gold);
 }
 
-.match-editor textarea::-webkit-scrollbar-corner {
-  background: var(--track);
+.pseudo-editor-textarea::-webkit-scrollbar-corner {
+  background: transparent;
 }
 
 .editor-footer {

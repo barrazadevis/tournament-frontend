@@ -5,6 +5,7 @@ import { connectNamespace } from '../api/socket';
 import { useTeams } from '../hooks/useTeams';
 import { formatSeconds } from '../utils/format';
 import { AppHeader } from '../components/AppHeader';
+import { PseudoEditor } from '../components/PseudoEditor';
 import { teamStorageKey } from '../utils/teamStorage';
 import { useModal } from '../components/ModalProvider';
 import type { Match, TimerTickEvent, MatchUpdatedEvent } from '../api/types';
@@ -122,15 +123,14 @@ export function TeamMatchPage() {
             <div className={`status-banner ${banner.kind}`}>{banner.message}</div>
           ) : (
             <>
-              <textarea
+              <PseudoEditor
                 value={content}
-                onChange={(e) => setContent(e.target.value)}
+                onChange={setContent}
                 placeholder="Estructura repetitiva + pseudocódigo (PSeInt)"
-                wrap="off"
               />
               <div className="editor-footer">
                 <div className="hint">
-                  El profesor evaluará esto. Sé claro y completo. · {content.length} caracteres
+                  El profesor evaluará esto. Valida que tu algoritmo esté correcto. · {content.length} caracteres
                 </div>
                 <button className="submit-btn" disabled={submitting} onClick={handleSubmit}>
                   Enviar solución

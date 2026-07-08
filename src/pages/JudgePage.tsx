@@ -5,12 +5,13 @@ import { connectNamespace } from '../api/socket';
 import { useTeams } from '../hooks/useTeams';
 import { formatSeconds, formatTime } from '../utils/format';
 import { BracketView } from '../components/BracketView';
+import { PseudoEditor } from '../components/PseudoEditor';
 import { StartTournamentPanel } from '../components/StartTournamentPanel';
 import { ChampionCelebration } from '../components/ChampionCelebration';
 import { statusBadge } from '../utils/tournamentStatus';
 import { roundNameForMatchCount } from '../utils/roundNaming';
 import { useModal } from '../components/ModalProvider';
-import type { Tournament, QualifyingRound, TimerTickEvent, TournamentFinishedEvent } from '../api/types';
+import type { Tournament, QualifyingRound, Submission, TimerTickEvent, TournamentFinishedEvent } from '../api/types';
 
 export function JudgePage() {
   const { tournamentId = '' } = useParams();
@@ -237,7 +238,7 @@ function QualifyingPanel({ qualifying, teamName, onJudge, onFinalize }: Qualifyi
               </div>
             </div>
             {submission?.verdict === 'PENDING' && (
-              <div className="submission-preview">{submission.content}</div>
+              <PseudoEditor value={submission.content} readOnly compact fileName={`${teamName(teamId)}.psc`} />
             )}
           </div>
         );
@@ -325,31 +326,59 @@ function BracketPanel({
                 )}
               </div>
             </div>
-            {pendingSubmissions.map((submission, index) => (
-              <div key={submission.teamId} className="submission-preview">
-                <div className="match-row-top">
-                  <div>
-                    <strong>{teamName(submission.teamId)}</strong>{' '}
-                    <span className="hint" style={{ display: 'inline' }}>
-                      envió a las {formatTime(submission.submittedAt)}
-                      {index === 0 && pendingSubmissions.length > 1 ? ' — primero' : ''}
-                    </span>
-                  </div>
-                  <div className="actions">
-                    <button className="btn-approve" onClick={() => onJudge(match.id, submission.teamId, true)}>
-                      Aprobar
-                    </button>
-                    <button className="btn-reject" onClick={() => onJudge(match.id, submission.teamId, false)}>
-                      Rechazar
-                    </button>
-                  </div>
-                </div>
-                {submission.content}
-              </div>
-            ))}
+            {pendingSubmissions.length > 0 && (
+              <SubmissionsPanel
+                matchId={match.id}
+                submissions={pendingSubmissions}
+                teamName={teamName}
+                onJudge={onJudge}
+              />
+            )}
           </div>
         );
       })}
+    </div>
+  );
+}
+
+interface SubmissionsPanelProps {
+  matchId: string;
+  submissions: Submission[];
+  teamName: (id: string) => string;
+  onJudge: (matchId: string, teamId: string, approve: boolean) => void;
+}
+
+function SubmissionsPanel({ matchId, submissions, teamName, onJudge }: SubmissionsPanelProps) {
+  const [activeIndex, setActiveIndex] = useState(0);
+  const active = submissions[Math.min(activeIndex, submissions.length - 1)];
+
+  return (
+    <div className="submission-panel">
+      {submissions.length > 1 && (
+        <div className="submission-tabs">
+          {submissions.map((submission, index) => (
+            <button
+              key={submission.teamId}
+              type="button"
+              className={`submission-tab${index === activeIndex ? ' active' : ''}`}
+              onClick={() => setActiveIndex(index)}
+            >
+              {teamName(submission.teamId)}
+              {index === 0 ? ' · primero' : ''}
+            </button>
+          ))}
+        </div>
+      )}
+      <div className="submission-meta">envió a las {formatTime(active.submittedAt)}</div>
+      <PseudoEditor value={active.content} readOnly compact fileName={`${teamName(active.teamId)}.psc`} />
+      <div className="actions">
+        <button className="btn-approve" onClick={() => onJudge(matchId, active.teamId, true)}>
+          Aprobar
+        </button>
+        <button className="btn-reject" onClick={() => onJudge(matchId, active.teamId, false)}>
+          Rechazar
+        </button>
+      </div>
     </div>
   );
 }
