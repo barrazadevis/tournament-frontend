@@ -2,9 +2,11 @@ import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { apiGet, apiPost, ApiError } from '../api/client';
 import { AppHeader } from '../components/AppHeader';
+import { ChampionCelebration } from '../components/ChampionCelebration';
 import { teamStorageKey } from '../utils/teamStorage';
 import { TEAM_LOGOS } from '../utils/teamLogos';
 import { useModal } from '../components/ModalProvider';
+import { useTeams } from '../hooks/useTeams';
 import type { QualifyingRound, Tournament } from '../api/types';
 
 interface StoredTeam {
@@ -22,6 +24,7 @@ export function TeamPortalPage() {
   const { tournamentId = '' } = useParams();
   const navigate = useNavigate();
   const { alertModal } = useModal();
+  const { teamName: rosterTeamName, teamLogo: rosterTeamLogo } = useTeams();
   const [stored, setStored] = useState<StoredTeam | null>(null);
   const [pendingCode, setPendingCode] = useState<PendingCode | null>(null);
   const [tournamentStatus, setTournamentStatus] = useState<Tournament['status'] | null>(null);
@@ -34,6 +37,7 @@ export function TeamPortalPage() {
   const [status, setStatus] = useState<{ icon: string; title: string; detail: string; spinner?: boolean } | null>(
     null,
   );
+  const [champion, setChampion] = useState(false);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
@@ -94,7 +98,11 @@ export function TeamPortalPage() {
         navigate(`/match/${tournamentId}/${match.id}/${teamId}`);
         return;
       }
-      if (match.winnerId === teamId) {
+      const isFinalMatch = latestRound.matches.length === 1;
+      if (match.winnerId === teamId && isFinalMatch) {
+        stopPolling();
+        setChampion(true);
+      } else if (match.winnerId === teamId) {
         setStatus({
           icon: '🎉',
           title: '¡Ganaron su match!',
@@ -195,12 +203,25 @@ export function TeamPortalPage() {
     setStored(null);
     setPendingCode(null);
     setStatus(null);
+    setChampion(false);
     setRegistering(false);
     stopPolling();
   };
 
   if (!tournamentId) {
     return <p style={{ padding: '2rem' }}>Este link no tiene un tournamentId válido.</p>;
+  }
+
+  if (champion && stored) {
+    return (
+      <div className="screen">
+        <AppHeader />
+        <ChampionCelebration championName={rosterTeamName(stored.teamId) || stored.teamName} championLogo={rosterTeamLogo(stored.teamId)} />
+        <button className="switch-team" onClick={handleSwitchTeam}>
+          ¿No eres este equipo? Cambiar
+        </button>
+      </div>
+    );
   }
 
   return (

@@ -1,3 +1,4 @@
+import type { KeyboardEvent } from 'react';
 import { roundNameForMatchCount } from '../utils/roundNaming';
 import type { Match, Tournament } from '../api/types';
 
@@ -5,6 +6,9 @@ interface BracketViewProps {
   tournament: Tournament;
   teamName: (id: string) => string;
   teamLogo: (id: string) => string | undefined;
+  /** Si se pasa, cada casilla con match real se vuelve clicable (usado por
+   * el juez para abrir el histórico de envíos de ese match). */
+  onSelectMatch?: (match: Match) => void;
 }
 
 const COL_WIDTH = 220;
@@ -73,7 +77,7 @@ function PlaceholderRow() {
  * bracket-advancement.service.ts en el backend) se muestran como casillas
  * "Por definir" — no hay nada real que mostrar ahí todavía.
  */
-export function BracketView({ tournament, teamName, teamLogo }: BracketViewProps) {
+export function BracketView({ tournament, teamName, teamLogo, onSelectMatch }: BracketViewProps) {
   if (tournament.rounds.length === 0) return null;
 
   const round0Count = tournament.rounds[0].matches.length;
@@ -155,11 +159,20 @@ export function BracketView({ tournament, teamName, teamLogo }: BracketViewProps
           {boxes.map((box) => {
             const match = box.match;
             const isChampion = box.isChampionSlot && !!match?.winnerId;
+            const clickable = !!match && !!onSelectMatch;
             return (
               <div
                 key={box.key}
-                className={`bracket-match${isChampion ? ' bracket-champion' : ''}${!match ? ' bracket-placeholder' : ''}`}
+                className={`bracket-match${isChampion ? ' bracket-champion' : ''}${!match ? ' bracket-placeholder' : ''}${clickable ? ' bracket-match--clickable' : ''}`}
                 style={{ left: box.x, top: box.y + TOP_OFFSET, width: COL_WIDTH, height: MATCH_HEIGHT }}
+                {...(clickable
+                  ? {
+                      role: 'button',
+                      tabIndex: 0,
+                      onClick: () => onSelectMatch(match),
+                      onKeyDown: (e: KeyboardEvent) => e.key === 'Enter' && onSelectMatch(match),
+                    }
+                  : {})}
               >
                 {match ? (
                   <>

@@ -8,10 +8,19 @@ import { BracketView } from '../components/BracketView';
 import { PseudoEditor } from '../components/PseudoEditor';
 import { StartTournamentPanel } from '../components/StartTournamentPanel';
 import { ChampionCelebration } from '../components/ChampionCelebration';
+import { Modal } from '../components/Modal';
 import { statusBadge } from '../utils/tournamentStatus';
 import { roundNameForMatchCount } from '../utils/roundNaming';
 import { useModal } from '../components/ModalProvider';
-import type { Tournament, QualifyingRound, Submission, TimerTickEvent, TournamentFinishedEvent } from '../api/types';
+import type {
+  Tournament,
+  QualifyingRound,
+  Submission,
+  Match,
+  Verdict,
+  TimerTickEvent,
+  TournamentFinishedEvent,
+} from '../api/types';
 
 export function JudgePage() {
   const { tournamentId = '' } = useParams();
@@ -22,8 +31,11 @@ export function JudgePage() {
   const [qualifying, setQualifying] = useState<QualifyingRound | null>(null);
   const [remainingByMatch, setRemainingByMatch] = useState<Record<string, number>>({});
   const [championId, setChampionId] = useState<string | null>(null);
+  const [celebrationOpen, setCelebrationOpen] = useState(false);
+  const [historyMatch, setHistoryMatch] = useState<Match | null>(null);
   const [timerDurationMinutes, setTimerDurationMinutes] = useState(5);
   const socketRef = useRef<ReturnType<typeof connectNamespace> | null>(null);
+  const autoAdvancedRoundIdRef = useRef<string | null>(null);
 
   const refresh = async () => {
     const data = await apiGet<Tournament>(`/tournaments/${tournamentId}`);
@@ -73,6 +85,7 @@ export function JudgePage() {
     socket.on('round_advanced', refresh);
     socket.on('tournament_finished', (event: TournamentFinishedEvent) => {
       setChampionId(event.championTeamId);
+      setCelebrationOpen(true);
       refresh();
     });
 
@@ -81,6 +94,22 @@ export function JudgePage() {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tournamentId]);
+
+  // Si el profesor recarga la página con el torneo ya terminado, también
+  // queremos mostrar la celebración una vez (no solo cuando llega el evento
+  // de socket en vivo) — pero solo se abre en esta transición, no cada vez
+  // que `refresh()` vuelve a traer el mismo status.
+  useEffect(() => {
+    if (tournament?.status === 'FINISHED') setCelebrationOpen(true);
+  }, [tournament?.status]);
+
+  // La celebración se cierra sola para no bloquear al profesor, que necesita
+  // volver a ver el panel (bracket + submissions) para revisar lo enviado.
+  useEffect(() => {
+    if (!celebrationOpen) return;
+    const timeout = setTimeout(() => setCelebrationOpen(false), 6000);
+    return () => clearTimeout(timeout);
+  }, [celebrationOpen]);
 
   const startMatch = (matchId: string) =>
     socketRef.current?.emit('start_match', { matchId, timerDurationSeconds: timerDurationMinutes * 60 });
@@ -106,6 +135,24 @@ export function JudgePage() {
     });
   };
 
+  // Si ya se juzgaron todos los matches de la ronda actual con un ganador real,
+  // avanzamos solos en vez de esperar a que el profesor le dé clic a
+  // "Avanzar"/"Finalizar torneo". Si algún match quedó NO_WINNER (nadie
+  // envió, se agotó el tiempo), el backend exige una decisión manual del
+  // profesor (repetir el match) antes de poder avanzar — ahí NO se dispara
+  // el auto-avance. El ref evita reintentar para la misma ronda en cada
+  // refresh mientras el backend procesa el avance.
+  useEffect(() => {
+    if (!tournament || tournament.rounds.length === 0) return;
+    const round = tournament.rounds[tournament.rounds.length - 1];
+    if (autoAdvancedRoundIdRef.current === round.id) return;
+    if (!round.isComplete || round.matches.some((m) => m.resolution !== 'WINNER')) return;
+
+    autoAdvancedRoundIdRef.current = round.id;
+    advanceRound(round.order, roundNameForMatchCount(round.matches.length / 2));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tournament]);
+
   const judgeQualifying = async (teamId: string, approve: boolean) => {
     await apiPost(`/tournaments/${tournamentId}/qualifying-submissions/${teamId}/verdict`, { approve });
     refresh();
@@ -124,18 +171,8 @@ export function JudgePage() {
     );
   }
 
-  if (tournament.status === 'FINISHED') {
-    const finalRound = tournament.rounds[tournament.rounds.length - 1];
-    const champion = championId ?? finalRound?.matches[0]?.winnerId ?? null;
-    return (
-      <div className="judge-page">
-        <ChampionCelebration
-          championName={champion ? teamName(champion) : '—'}
-          championLogo={champion ? teamLogo(champion) : undefined}
-        />
-      </div>
-    );
-  }
+  const finalRound = tournament.rounds[tournament.rounds.length - 1];
+  const champion = championId ?? finalRound?.matches[0]?.winnerId ?? null;
 
   const remainingFor = (matchId: string, timerStartedAt: string | null, duration: number) => {
     if (remainingByMatch[matchId] !== undefined) return remainingByMatch[matchId];
@@ -146,6 +183,19 @@ export function JudgePage() {
 
   return (
     <div className="judge-page">
+      {celebrationOpen && tournament.status === 'FINISHED' && (
+        <Modal onClose={() => setCelebrationOpen(false)}>
+          <ChampionCelebration
+            championName={champion ? teamName(champion) : '—'}
+            championLogo={champion ? teamLogo(champion) : undefined}
+          />
+        </Modal>
+      )}
+      {historyMatch && (
+        <Modal onClose={() => setHistoryMatch(null)}>
+          <MatchHistoryPanel match={historyMatch} teamName={teamName} />
+        </Modal>
+      )}
       <header className="judge-header">
         <div>
           <div className="judge-header-eyebrow">Panel del juez</div>
@@ -179,7 +229,12 @@ export function JudgePage() {
         <StartTournamentPanel tournamentId={tournamentId} onStarted={refresh} />
       ) : (
         <>
-          <BracketView tournament={tournament} teamName={teamName} teamLogo={teamLogo} />
+          <BracketView
+            tournament={tournament}
+            teamName={teamName}
+            teamLogo={teamLogo}
+            onSelectMatch={setHistoryMatch}
+          />
           <BracketPanel
             round={tournament.rounds[tournament.rounds.length - 1]}
             teamName={teamName}
@@ -189,6 +244,7 @@ export function JudgePage() {
             onJudge={judgeMatch}
             onAdvance={advanceRound}
             onRestart={restartMatch}
+            finished={tournament.status === 'FINISHED'}
           />
         </>
       )}
@@ -256,6 +312,7 @@ interface BracketPanelProps {
   onJudge: (matchId: string, teamId: string, approve: boolean) => void;
   onAdvance: (currentRoundOrder: number, roundName: string) => void;
   onRestart: (matchId: string) => void;
+  finished: boolean;
 }
 
 function BracketPanel({
@@ -267,20 +324,27 @@ function BracketPanel({
   onJudge,
   onAdvance,
   onRestart,
+  finished,
 }: BracketPanelProps) {
   const isFinalMatch = round.matches.length === 1;
   const upcomingRoundName = roundNameForMatchCount(round.matches.length / 2);
+  // Cuando todos los matches ya tienen un ganador real, JudgePage avanza
+  // solo (ver el useEffect de auto-avance) — el botón se deshabilita para
+  // no disparar un segundo `advance_round` en carrera con ese auto-avance.
+  const readyToAutoAdvance = round.isComplete && round.matches.every((m) => m.resolution === 'WINNER');
   return (
     <div>
       <div className="round-header">
         <h2>{round.name}</h2>
-        <button
-          className="advance-btn"
-          disabled={!round.isComplete}
-          onClick={() => onAdvance(round.order, upcomingRoundName)}
-        >
-          {isFinalMatch ? 'Finalizar torneo' : `Avanzar a ${upcomingRoundName}`}
-        </button>
+        {!finished && (
+          <button
+            className="advance-btn"
+            disabled={!round.isComplete || readyToAutoAdvance}
+            onClick={() => onAdvance(round.order, upcomingRoundName)}
+          >
+            {readyToAutoAdvance ? 'Avanzando…' : isFinalMatch ? 'Finalizar torneo' : `Avanzar a ${upcomingRoundName}`}
+          </button>
+        )}
       </div>
 
       {round.matches.map((match) => {
@@ -379,6 +443,59 @@ function SubmissionsPanel({ matchId, submissions, teamName, onJudge }: Submissio
           Rechazar
         </button>
       </div>
+    </div>
+  );
+}
+
+function verdictBadge(verdict: Verdict): { className: string; label: string } {
+  if (verdict === 'APPROVED') return { className: 'badge--active', label: 'Aprobada' };
+  if (verdict === 'REJECTED') return { className: 'badge--rejected', label: 'Rechazada' };
+  return { className: 'badge--pending', label: 'Por juzgar' };
+}
+
+interface MatchHistoryPanelProps {
+  match: Match;
+  teamName: (id: string) => string;
+}
+
+/**
+ * Detalle de un match ya sea de la ronda actual o de una anterior — se abre
+ * al hacer clic en cualquier casilla del bracket. Muestra el envío de CADA
+ * equipo (aprobado, rechazado o sin enviar), no solo el pendiente de
+ * juzgar como `SubmissionsPanel`; es el "histórico" para que el profesor
+ * pueda volver a revisar una solución después de juzgarla.
+ */
+function MatchHistoryPanel({ match, teamName }: MatchHistoryPanelProps) {
+  return (
+    <div className="match-history-panel card">
+      <h2>{match.roundName}</h2>
+      <div className="match-history-subtitle">
+        {teamName(match.teamAId)} vs {teamName(match.teamBId)}
+        {match.winnerId ? ` · Ganó ${teamName(match.winnerId)}` : ''}
+      </div>
+
+      {[match.teamAId, match.teamBId].map((teamId) => {
+        const submission = match.submissions.find((s) => s.teamId === teamId);
+        const badge = submission ? verdictBadge(submission.verdict) : null;
+        return (
+          <div key={teamId} className="match-history-entry">
+            <div className="match-history-entry-top">
+              <strong>{teamName(teamId)}</strong>
+              {badge ? (
+                <>
+                  <span className={`badge ${badge.className}`}>{badge.label}</span>
+                  <span className="submission-meta">envió a las {formatTime(submission!.submittedAt)}</span>
+                </>
+              ) : (
+                <span className="badge badge--pending">Sin envío</span>
+              )}
+            </div>
+            {submission && (
+              <PseudoEditor value={submission.content} readOnly compact fileName={`${teamName(teamId)}.psc`} />
+            )}
+          </div>
+        );
+      })}
     </div>
   );
 }
