@@ -111,8 +111,29 @@ export function JudgePage() {
     return () => clearTimeout(timeout);
   }, [celebrationOpen]);
 
-  const startMatch = (matchId: string) =>
-    socketRef.current?.emit('start_match', { matchId, timerDurationSeconds: timerDurationMinutes * 60 });
+  // El input "Duración de match" se re-sincroniza con la duración real de la
+  // ronda vigente cada vez que aparece una ronda nueva (carga inicial,
+  // recarga de página, o tras avanzar) — así el profesor ve lo que
+  // realmente se configuró (ej. 20 min) en vez de quedarse pegado en el
+  // default de este `useState`. Solo depende de la CANTIDAD de rondas, no
+  // del objeto `tournament` completo, para no pisar lo que el profesor esté
+  // escribiendo mientras la ronda actual sigue en curso (refresh cada
+  // veredicto no debe resetear el input).
+  useEffect(() => {
+    if (!tournament || tournament.rounds.length === 0) return;
+    const latestRound = tournament.rounds[tournament.rounds.length - 1];
+    const sampleMatch = latestRound.matches[0];
+    if (!sampleMatch) return;
+    setTimerDurationMinutes(Math.round(sampleMatch.timerDurationSeconds / 60));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tournament?.rounds.length]);
+
+  // La duración del match ya quedó fija cuando se generó la ronda (al crear
+  // el torneo o al avanzar de ronda) — "Iniciar match" solo arranca el
+  // timer server-side con ESE valor, no puede cambiarlo. El input "Duración
+  // de match" del header es para configurar la duración de la SIGUIENTE
+  // ronda (ver advanceRound), no la de matches ya creados.
+  const startMatch = (matchId: string) => socketRef.current?.emit('start_match', { matchId });
 
   const judgeMatch = (matchId: string, teamId: string, approve: boolean) =>
     socketRef.current?.emit('judge_verdict', { matchId, teamId, approve });
